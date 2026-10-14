@@ -1,4 +1,4 @@
-# GPR202 - A1 OpenGL Project
+# GPR202 - A2 OpenGL Project
 ## DISCLAIMER
 **This project is for educational purposes only. 
 The code and assets used in this project are either created by myself or sourced from free and open resources in the exception of one instance highlighted in the AI Usage section.**  
@@ -7,7 +7,7 @@ The code and assets used in this project are either created by myself or sourced
 *The majority of the project uses knowledge built upon in other classes such as my use of multiple classes and static functions regarding OOP techniques. The other part uses a series of YouTube tutorials on OpenGL by Coding with Sphere (2023) to form the basis of all functionality.*
 
 ### TO RUN THE APPLICATION
-Run bin/Debug/net10.0/3DDemoA1.exe from within the extracted project folder (requires .NET 10).
+Run bin/Debug/net10.0/3DDemoA2.exe from within the extracted project folder (requires .NET 10).
 
 ## AI Usage
 I have used ChatGPT to assist in the development of this project. The AI was used to provide guidance on how to code the debugging functionality as the current resource material was confusing. The debugging functionality was implemented to display information being rendered on the screen and was modelled after EpicGames (2026) AddOnScreenDebugMessage function.
