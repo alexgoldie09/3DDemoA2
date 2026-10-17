@@ -77,7 +77,8 @@ namespace _3DDemoA2.World
  
             // Bind the VAO and texture, and draw the chunk's mesh.
             _vao?.Bind();
-            _texture?.Bind();
+            _texture?.Bind(0);
+            shaderProgram.SetInt("Texture0", 0); // sampler reads from texture unit 0
             shaderProgram.SetInt("UseVertexColor", UsesVertexColor ? 1 : 0);
             GL.DrawElements(PrimitiveType.Triangles, _indices.Count, DrawElementsType.UnsignedInt, 0);
         }

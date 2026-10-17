@@ -13,4 +13,19 @@
       <PackageReference Include="StbImageSharp" Version="2.30.16" />
     </ItemGroup>
 
+    <!--
+      Copy every asset next to the compiled executable (bin/<Config>/net10.0/...) on each build.
+      AssetPaths loads from there, so the program finds its files whether it is launched from
+      the IDE, with `dotnet run`, or by double-clicking the .exe in bin/ (as submitted).
+      "Update" (not "Include") is used because the SDK already includes these files as None items.
+    -->
+    <ItemGroup>
+      <None Update="Shaders\**\*" CopyToOutputDirectory="PreserveNewest" />
+      <None Update="Textures\**\*" CopyToOutputDirectory="PreserveNewest" />
+      <None Update="Models\**\*" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+    <ItemGroup>
+      <Folder Include="Models\" />
+    </ItemGroup>
+
 </Project>

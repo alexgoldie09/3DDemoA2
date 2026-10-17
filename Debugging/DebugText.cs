@@ -71,7 +71,7 @@ namespace _3DDemoA2.Debugging
         public static void Initialize(float screenWidth, float screenHeight)
         {
             _shader = new ShaderProgram("Text.vert", "Text.frag");
-            _font = new Texture("BitPapAtlas.png");
+            _font = new Texture("BitPapAtlas.png", pixelPerfect: true); // nearest filtering keeps the pixel font crisp
 
             // One interleaved, dynamic buffer: the text changes every frame, so it's rebuilt every frame.
             // (Raw GL here because the VAO/VBO wrappers are built for separate, static buffers.)
@@ -171,7 +171,9 @@ namespace _3DDemoA2.Debugging
             _shader.Bind();
             _shader.SetMatrix4("projection",
                 Matrix4.CreateOrthographicOffCenter(0f, _screenWidth, _screenHeight, 0f, -1f, 1f));
-            _font.Bind();
+            // Font atlas on texture unit 0, and point the sampler at that unit
+            _font.Bind(0);
+            _shader.SetInt("FontAtlas", 0);
 
             GL.BindVertexArray(_vao);
             GL.BindBuffer(BufferTarget.ArrayBuffer, _vbo);

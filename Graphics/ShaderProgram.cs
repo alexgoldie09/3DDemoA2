@@ -1,4 +1,5 @@
 using _3DDemoA2.Debugging;
+using _3DDemoA2.Utilities;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
 
@@ -73,44 +74,38 @@ namespace _3DDemoA2.Graphics
         }
         
         #region Public API
+        // Uniform setters apply to the currently bound program, so call Bind() before using them.
+
         /// <summary>
         /// Sets a 4x4 matrix uniform variable in the shader program.
+        /// Uploaded transposed (row-vector convention), matching the vec4 * matrix order used in the shaders.
         /// </summary>
         /// <param name="name">The name of the uniform variable in the shader.</param>
         /// <param name="matrix">The 4x4 matrix to set.</param>
-        public void SetMatrix4(string name, Matrix4 matrix)
-        {
-            // Cache the uniform location to avoid repeated lookups
-            if (!_uniformLocations.TryGetValue(name, out int location))
-            {
-                location = GL.GetUniformLocation(ID, name);
-                _uniformLocations[name] = location;
-                
-                
-                if (location == -1)
-                    DebugText.Log($"Uniform '{name}' not found in shader {ID}", Color4.Orange, 6f);
-            }
-            GL.UniformMatrix4(location, true, ref matrix);
-        }
-        
+        public void SetMatrix4(string name, Matrix4 matrix) => GL.UniformMatrix4(GetLocation(name), true, ref matrix);
+
+        /// <summary>
+        /// Sets a 3-component vector uniform variable in the shader program (e.g. a camera position or light direction).
+        /// </summary>
+        /// <param name="name">The name of the uniform variable in the shader.</param>
+        /// <param name="value">The vector to set.</param>
+        public void SetVector3(string name, Vector3 value) => GL.Uniform3(GetLocation(name), value);
+
+        /// <summary>
+        /// Sets a float uniform variable in the shader program (e.g. a reflectivity amount).
+        /// </summary>
+        /// <param name="name">The name of the uniform variable in the shader.</param>
+        /// <param name="value">The float value to set.</param>
+        public void SetFloat(string name, float value) => GL.Uniform1(GetLocation(name), value);
+
         /// <summary>
         /// Sets an integer uniform variable in the shader program.
+        /// Also used for bools and for sampler uniforms (the texture unit number).
         /// </summary>
         /// <param name="name">The name of the uniform variable in the shader.</param>
         /// <param name="value">The integer value to set.</param>
-        public void SetInt(string name, int value)
-        {
-            if (!_uniformLocations.TryGetValue(name, out int location))
-            {
-                location = GL.GetUniformLocation(ID, name);
-                _uniformLocations[name] = location;
-                
-                if (location == -1)
-                    DebugText.Log($"Uniform '{name}' not found in shader {ID}", Color4.Orange, 6f);
-            }
-            GL.Uniform1(location, value);
-        }
-        
+        public void SetInt(string name, int value) => GL.Uniform1(GetLocation(name), value);
+
         /// <summary>
         /// Binds the shader program for use in rendering.
         /// </summary>
@@ -127,31 +122,46 @@ namespace _3DDemoA2.Graphics
         
         #region Helper Methods
         /// <summary>
-        /// Loads the shader source code from a file located in the "Shaders" directory.
+        /// Returns a uniform's location, looking it up only the first time and caching it after that.
+        /// A location of -1 means the uniform doesn't exist, or the GLSL compiler removed it because it is unused.
+        /// OpenGL silently ignores writes to -1, so it is logged once here to make typos easy to spot.
         /// </summary>
-        /// <param name="filePath">The relative path to the shader file.</param>
-        /// <returns>The shader source code as a string.</returns>
-        private string LoadShaderSource(string filePath)
+        /// <param name="name">The name of the uniform variable in the shader.</param>
+        /// <returns>The uniform's location, or -1 if not found.</returns>
+        private int GetLocation(string name)
         {
-            // Load shader source code from a file located in the "Shaders" directory
-            var shaderSource = string.Empty;
+            if (_uniformLocations.TryGetValue(name, out int location))
+                return location;
 
-            // Try to read the shader source code from the specified file
+            location = GL.GetUniformLocation(ID, name);
+            _uniformLocations[name] = location;
+
+            if (location == -1)
+                DebugText.Log($"Uniform '{name}' not found in shader {ID}", Color4.Orange, 6f);
+
+            return location;
+        }
+
+        /// <summary>
+        /// Loads the shader source code from a file in the Shaders folder.
+        /// </summary>
+        /// <param name="fileName">The shader file, relative to the Shaders folder.</param>
+        /// <returns>The shader source code, or an empty string if the file could not be read.</returns>
+        private static string LoadShaderSource(string fileName)
+        {
+            string path = AssetPaths.Shader(fileName);
+
             try
             {
-                // Read the shader source code from the specified file
-                using var resource = new StreamReader("../../../Shaders/" + filePath);
-                
-                // Read the entire contents of the shader file into a string
-                shaderSource = resource.ReadToEnd();
+                return File.ReadAllText(path);
             }
-            // Catch any exceptions that occur during file reading and log an error message
+            // An empty source will then fail to compile, which is logged by the constructor
             catch (Exception e)
             {
-                Console.WriteLine($"Error loading shader source from file '{filePath}': {e.Message}");
+                Console.WriteLine($"Error loading shader source from '{path}': {e.Message}");
+                DebugText.Log($"Shader '{fileName}' could not be read (see console)", Color4.Red, 6f);
+                return string.Empty;
             }
-            
-            return shaderSource;
         }
         #endregion
     }

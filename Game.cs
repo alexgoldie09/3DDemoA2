@@ -226,9 +226,16 @@ namespace _3DDemoA2
             
             // Update the debug text system with the elapsed time for this frame
             DebugText.Update(deltaTime);
-
-            // Toggle cursor visibility and lock state when the Escape key is pressed
+            
+            // Close the program when the Escape key is pressed (OnUnload then frees all GPU resources)
             if (kb.IsKeyPressed(Keys.Escape))
+            {
+                Close();
+                return;
+            }
+
+            // Toggle cursor visibility and lock state when the Tab key is pressed
+            if (kb.IsKeyPressed(Keys.Tab))
             {
                 _isCursorOn = !_isCursorOn;
                 CursorState = _isCursorOn ? CursorState.Normal : CursorState.Grabbed;
@@ -253,7 +260,8 @@ namespace _3DDemoA2
             // Debug readouts (keyed, so they update in place instead of stacking)
             DebugText.Log($"FPS: {1.0 / deltaTime:0}", Color4.White, 0.5f, key: 1);
             DebugText.Log($"Press C for Backface Culling: {(_useBackfaceCulling ? "ON" : "OFF")}", Color4.Yellow, 0.5f, key: 2);
-            DebugText.Log($"Press Esc to Toggle Cursor", Color4.Magenta, 0.5f, key: 3);
+            DebugText.Log($"Press Tab to Toggle Cursor", Color4.Cyan, 0.5f, key: 3);
+            DebugText.Log($"Press Esc to Quit", Color4.Magenta, 0.5f, key: 4);
             
             // Update the elapsed time
             _elapsedTime += deltaTime;
