@@ -83,6 +83,14 @@ namespace _3DDemoA2.Graphics
         /// <param name="name">The name of the uniform variable in the shader.</param>
         /// <param name="matrix">The 4x4 matrix to set.</param>
         public void SetMatrix4(string name, Matrix4 matrix) => GL.UniformMatrix4(GetLocation(name), true, ref matrix);
+        
+        /// <summary>
+        /// Sets a 3x3 matrix uniform variable in the shader program (e.g. the normal matrix).
+        /// Uploaded transposed like SetMatrix4, so shaders use the same vec3 * matrix order.
+        /// </summary>
+        /// <param name="name">The name of the uniform variable in the shader.</param>
+        /// <param name="matrix">The 3x3 matrix to set.</param>
+        public void SetMatrix3(string name, Matrix3 matrix) => GL.UniformMatrix3(GetLocation(name), true, ref matrix);
 
         /// <summary>
         /// Sets a 3-component vector uniform variable in the shader program (e.g. a camera position or light direction).

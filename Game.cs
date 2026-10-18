@@ -1,11 +1,10 @@
-using System.Diagnostics;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using _3DDemoA2.Graphics;
-using _3DDemoA2.World;
+using _3DDemoA2.Loading;
 using _3DDemoA2.Debugging;
 
 namespace _3DDemoA2
@@ -18,30 +17,26 @@ namespace _3DDemoA2
         // width and height of screen
         private int _width;
         private int _height;
-        
+
         // title of the game
         private readonly string _title;
-        
-        // rotation vars
-        private float _rotationSpeed = 60f; // degrees per second
-        private Vector3 _rotDir = Vector3.UnitY; // rotation direction for the pyramid
-        
-        // scale vars
-        private float _elapsedTime = 0f; // elapsed time since the last frame, used for smooth animations
-        private float _amplitudeAmt = 0.3f; // amplitude of the pulsing scale effect for the cube
-        private float _scaleSpeed = 2f; // speed of the pulsing scale effect for the cube
-        private float _scaleBase = 1f; // base scale of the cube
-        
+
         // Render pipeline vars
-        private Chunk? _pyramid;
-        private Chunk? _cube;
-        private ShaderProgram? _shaderProgram;
+        private ShaderProgram? _modelShader;
         private bool _useBackfaceCulling;
-        
+
+        // Island (temporary: moves into a StaticProp in Phase 3)
+        private Mesh? _islandMesh;
+        private Texture? _islandTexture;
+
+        // Debug view: what the model shader outputs (cycled with V)
+        private static readonly string[] DebugViewNames = ["Texture", "Normals", "UVs"];
+        private int _debugView;
+
         // Camera vars
-        private Camera? _camera; 
-        private readonly Vector3 _initialCameraPosition = new Vector3(1f, 0f, 2.5f);
-        
+        private Camera? _camera;
+        private readonly Vector3 _initialCameraPosition = new Vector3(0f, 2f, 25f); // in front of the island, just above the grass
+
         // Mouse cursor state
         private bool _isCursorOn;
 
@@ -59,7 +54,7 @@ namespace _3DDemoA2
             _height = height;
             _useBackfaceCulling = useBackfaceCulling;
             _title = title;
-            
+
             // Set the window size and title
             Title = _title;
 
@@ -75,7 +70,7 @@ namespace _3DDemoA2
         protected override void OnLoad()
         {
             base.OnLoad();
-            
+
             // --- Debugging Setup ---
             // Initialise the debug text system with the window width and height
             DebugText.Initialize(_width, _height);
@@ -88,43 +83,25 @@ namespace _3DDemoA2
             if (_useBackfaceCulling)
                 GL.Enable(EnableCap.CullFace);
 
-            // Set the front face winding order to clockwise
-            // The indices are wound clockwise, so clockwise triangles are the front faces
-            GL.FrontFace(FrontFaceDirection.Cw);
+            // Front faces are wound counter-clockwise (OpenGL's default, and what Blender exports),
+            // so the back face of every triangle is culled when culling is on
+            GL.FrontFace(FrontFaceDirection.Ccw);
 
             // Set the VSync mode to On to synchronize the frame rate with the monitor's refresh rate
             VSync = VSyncMode.On;
 
             // --- GPU resources ---
-            // Create the shader program and load the vertex and fragment shaders
-            _shaderProgram = new ShaderProgram("Default.vert", "Default.frag");
+            // Create the shader program used for every textured model
+            _modelShader = new ShaderProgram("Model.vert", "Model.frag");
 
-            // Create the pyramid chunk with position, shapes, and textures
-            try
-            {
-                _pyramid = new Chunk(Vector3.Zero, ShapeType.Pyramid, "HieroglyphArt.jpeg");
-                DebugText.Log("Pyramid created successfully.", Color4.LightGreen, 6f);
-            }
-            catch (Exception e)
-            {
-                DebugText.Log($"Pyramid failed: {e.Message}", Color4.Red, 6f);
-            }
-            
-            // Create the cube chunk with position, shapes, and colours (no texture)
-            try
-            {
-                _cube = new Chunk(new Vector3(2f, 0f, 0f), ShapeType.Cube);
-                DebugText.Log("Cube created successfully.", Color4.LightGreen, 6f);
-            }
-            catch (Exception e)
-            {
-                DebugText.Log($"Failed to create cube: {e.Message}", Color4.Red, 6f);
-            }
-            
+            // Load the island: OBJ file -> CPU mesh data -> GPU mesh, plus its baked texture
+            _islandMesh = new Mesh(ObjLoader.Load("Island.obj"), "Island");
+            _islandTexture = new Texture("IslandTexture.png");
+
             // --- Camera & input ---
             // Create the camera with the specified width, height, and initial position
             _camera = new Camera(_width, _height, _initialCameraPosition);
-            
+
             // Set the initial cursor state to grabbed and hide the cursor
             CursorState = CursorState.Grabbed;
             _isCursorOn = false;
@@ -136,15 +113,15 @@ namespace _3DDemoA2
         protected override void OnUnload()
         {
             base.OnUnload();
-            
+
             // Delete the OpenGL resources to free up GPU memory
-            _pyramid?.Delete();
-            _cube?.Delete();
-            _shaderProgram?.Delete();
+            _islandMesh?.Delete();
+            _islandTexture?.Delete();
+            _modelShader?.Delete();
             // Shutdown the debug text system
             DebugText.Shutdown();
         }
-        
+
         /// <summary>
         /// Called when the window is resized.
         /// </summary>
@@ -156,17 +133,17 @@ namespace _3DDemoA2
             // Update height and widths
             _width = e.Width;
             _height = e.Height;
-            
+
             // Keep the camera's aspect ratio in sync with the window
             _camera?.SetScreenSize(_width, _height);
-            
+
             // Change the title of the window
             Title = $"{_title} - {_width}x{_height}";
-            
+
             // Update the debug text system with the new window size
             DebugText.SetScreenSize(_width, _height);
         }
-        
+
         /// <summary>
         /// Called when the framebuffer (actual pixel size) changes.
         /// On Retina/High DPI screens this is larger than the window size, so the viewport must use it.
@@ -176,7 +153,7 @@ namespace _3DDemoA2
             base.OnFramebufferResize(e);
             GL.Viewport(0, 0, e.Width, e.Height);
         }
-        
+
         /// <summary>
         /// Called every frame to update the rendering and drawing.
         /// </summary>
@@ -184,33 +161,47 @@ namespace _3DDemoA2
         {
             // Clear the color buffer and depth buffer
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
-            
-            if (_shaderProgram != null)
+
+            if (_modelShader != null && _camera != null)
             {
                 // Bind the shader first: uniform uploads apply to the currently bound program
-                _shaderProgram.Bind();
- 
-                // View and projection are shared by every object, so set them once per frame
-                if (_camera != null)
-                {
-                    _shaderProgram.SetMatrix4("view", _camera.GetViewMatrix());
-                    _shaderProgram.SetMatrix4("projection", _camera.GetProjectionMatrix());
-                }
+                _modelShader.Bind();
+
+                // View, projection and debug view matrices: shared by every object, so set them once per frame
+                _modelShader.SetMatrix4("view", _camera.GetViewMatrix());
+                _modelShader.SetMatrix4("projection", _camera.GetProjectionMatrix());
+                _modelShader.SetInt("DebugView", _debugView);
                 
-                // Each chunk sets its own model matrix inside Render
-                _pyramid?.Render(_shaderProgram);
-                _cube?.Render(_shaderProgram);
+                // Lighting: a single directional light (the sun) and ambient light
+                _modelShader.SetVector3("lightDir", new Vector3(-1.4f, -1f, -0.3f)); // sun from above, move a bit to one side
+                _modelShader.SetVector3("lightColor", new Vector3(1f, 0.97f, 0.9f)); // warm daylight
+                _modelShader.SetFloat("ambientStrength", 0.6f);
+                _modelShader.SetVector3("cameraPos", _camera.Position);
+
+                // per object (the island is matte)
+                _modelShader.SetFloat("specularStrength", 0f);
+                _modelShader.SetFloat("shininess", 32f);
+
+                // --- Island ---
+                // Model setup: Sits at the world origin with its grass surface at y = 0
+                Matrix4 model = Matrix4.Identity;
+                _modelShader.SetMatrix4("model", model);
+                _modelShader.SetMatrix3("normalMatrix", CreateNormalMatrix(model));
+
+                _islandTexture?.Bind(0);
+                _modelShader.SetInt("Texture0", 0); // sampler reads from texture unit 0
+                _islandMesh?.Draw();
             }
-            
+
             // Render the debug text on top of the 3D scene
             DebugText.Render();
 
             // Swap the front and back buffers to display the rendered frame
             Context.SwapBuffers();
-            
+
             base.OnRenderFrame(args);
         }
-        
+
         /// <summary>
         /// Called every frame to update the game logic.
         /// </summary>
@@ -221,12 +212,12 @@ namespace _3DDemoA2
             KeyboardState kb = KeyboardState; // Get the current keyboard state
 
             base.OnUpdateFrame(args);
-            
+
             float deltaTime = (float)args.Time;
-            
+
             // Update the debug text system with the elapsed time for this frame
             DebugText.Update(deltaTime);
-            
+
             // Close the program when the Escape key is pressed (OnUnload then frees all GPU resources)
             if (kb.IsKeyPressed(Keys.Escape))
             {
@@ -243,7 +234,7 @@ namespace _3DDemoA2
                 if (!_isCursorOn) // just switched back to Grabbed
                     _camera?.ResetMouseState();
             }
-            
+
             // Update the camera based on keyboard and mouse input, capturing the mouse when the cursor is not visible
             _camera?.Update(kb, ms, args, captureMouse: !_isCursorOn);
 
@@ -256,24 +247,29 @@ namespace _3DDemoA2
                 else
                     GL.Disable(EnableCap.CullFace);
             }
-            
+
+            // Cycle the debug view (texture -> normals -> UVs) when the V key is pressed
+            if (kb.IsKeyPressed(Keys.V))
+                _debugView = (_debugView + 1) % DebugViewNames.Length;
+
             // Debug readouts (keyed, so they update in place instead of stacking)
             DebugText.Log($"FPS: {1.0 / deltaTime:0}", Color4.White, 0.5f, key: 1);
             DebugText.Log($"Press C for Backface Culling: {(_useBackfaceCulling ? "ON" : "OFF")}", Color4.Yellow, 0.5f, key: 2);
+            DebugText.Log($"Press V for Debug View: {DebugViewNames[_debugView]}", Color4.Yellow, 0.5f, key: 5);
             DebugText.Log($"Press Tab to Toggle Cursor", Color4.Cyan, 0.5f, key: 3);
             DebugText.Log($"Press Esc to Quit", Color4.Magenta, 0.5f, key: 4);
-            
-            // Update the elapsed time
-            _elapsedTime += deltaTime;
-
-            // Rotate the pyramid around its Y-axis based on the elapsed time and rotation speed
-            if (_pyramid != null)
-                _pyramid.Rotation = Quaternion.FromAxisAngle(_rotDir, MathHelper.DegreesToRadians(_elapsedTime * _rotationSpeed));
-            
-            // Apply a pulsing scale effect to the cube based on the elapsed time, scale speed, and amplitude
-            if (_cube != null)
-                _cube.Scale = new Vector3(_scaleBase + MathF.Sin(_elapsedTime * _scaleSpeed) * _amplitudeAmt);
         }
+        #endregion
+
+        #region Helper Methods
+        /// <summary>
+        /// Builds the normal matrix for a model matrix: the inverse-transpose of its upper 3x3.
+        /// Normals must use this instead of the model matrix itself, otherwise non-uniform scaling
+        /// (e.g. the muzzle pulse later) would tilt them so they are no longer perpendicular to the surface.
+        /// The translation is dropped because normals are directions, not points.
+        /// </summary>
+        private static Matrix3 CreateNormalMatrix(Matrix4 model)
+            => new Matrix3(Matrix4.Transpose(Matrix4.Invert(model)));
         #endregion
     }
 }
