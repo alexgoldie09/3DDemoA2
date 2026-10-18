@@ -124,7 +124,7 @@ namespace _3DDemoA2.Loading
 
             // --- Report ---
             string summary = $"{fileName}: {positions.Count} v, {uvs.Count} vt, {normals.Count} vn, " +
-                             $"{triangleCount} tris -> {result.VertexCount} vertices, {result.IndexCount} indices";
+                             $"{triangleCount} tris: {result.VertexCount} vertices, {result.IndexCount} indices";
             Console.WriteLine(summary);
             DebugText.Log(summary, Color4.LightGreen, 6f);
 

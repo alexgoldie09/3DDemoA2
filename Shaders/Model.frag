@@ -7,7 +7,8 @@ in vec3 WorldPos; // World-space position (used for lighting / reflections in a 
 out vec4 FragColor; // Output colour of the fragment
 
 uniform sampler2D Texture0; // The model's texture (bound to texture unit 0)
-uniform int DebugView; // 0 = texture, 1 = normals as colour, 2 = UVs as colour
+uniform int DebugView; // 0 = texture, 1 = normals as colour, 2 = UVs as colour, 3 = wireframe
+uniform int UseLighting; // 1 = lit (diffuse + ambient + specular), 0 = raw texture colour
 uniform vec3 lightDir;  // direction the light travels, in world space (sunlight pointing down)
 uniform vec3 lightColor; // colour/intensity of the light
 uniform float ambientStrength;  // minimum brightness, so faces facing away aren't pitch black
@@ -18,11 +19,17 @@ uniform float shininess; // highlight tightness, e.g. 32
 void main()
 {
     if (DebugView == 1)
-        // Map each normal component from -1..1 to 0..1: +X = red, +Y (up) = green, +Z = blue
-        FragColor = vec4(normalize(WorldNormal) * 0.5 + 0.5, 1.0);
+    // Map each normal component from -1..1 to 0..1: +X = red, +Y (up) = green, +Z = blue
+    FragColor = vec4(normalize(WorldNormal) * 0.5 + 0.5, 1.0);
     else if (DebugView == 2)
-        // U = red, V = green: black at (0, 0), yellow at (1, 1)
-        FragColor = vec4(TexCoord, 0.0, 1.0);
+    // U = red, V = green: black at (0, 0), yellow at (1, 1)
+    FragColor = vec4(TexCoord, 0.0, 1.0);
+    else if (DebugView == 3)
+    // Wireframe: Game switches to line rasterisation, so only edges reach here; draw them in one solid colour
+    FragColor = vec4(1.0, 1.0, 0.0, 1.0);
+    else if (UseLighting == 0)
+    // Unlit: the texture exactly as baked
+    FragColor = vec4(texture(Texture0, TexCoord).rgb, 1.0);
     else
     {
         vec3 albedo = texture(Texture0, TexCoord).rgb;

@@ -9,9 +9,9 @@ out vec2 TexCoord; // Texture coordinate for the fragment shader
 out vec3 WorldNormal; // Normal in world space (for lighting / reflections)
 out vec3 WorldPos; // Position in world space (for lighting / reflections)
 
-uniform mat4 model; // Model matrix (object -> world)
-uniform mat4 view; // View matrix (world -> camera)
-uniform mat4 projection; // Projection matrix (camera -> clip space)
+uniform mat4 model; // Model matrix (object to world)
+uniform mat4 view; // View matrix (world to camera)
+uniform mat4 projection; // Projection matrix (camera to clip space)
 uniform mat3 normalMatrix; // Inverse-transpose of the model matrix, so normals stay perpendicular under non-uniform scale
 
 void main()
