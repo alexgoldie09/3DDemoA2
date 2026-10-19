@@ -19,10 +19,10 @@ uniform float shininess; // highlight tightness, e.g. 32
 void main()
 {
     if (DebugView == 1)
-    // Map each normal component from -1..1 to 0..1: +X = red, +Y (up) = green, +Z = blue
+    // Normals: Map each normal component from -1..1 to 0..1: +X = red, +Y (up) = green, +Z = blue
     FragColor = vec4(normalize(WorldNormal) * 0.5 + 0.5, 1.0);
     else if (DebugView == 2)
-    // U = red, V = green: black at (0, 0), yellow at (1, 1)
+    // UVs: U = red, V = green: black at (0, 0), yellow at (1, 1)
     FragColor = vec4(TexCoord, 0.0, 1.0);
     else if (DebugView == 3)
     // Wireframe: Game switches to line rasterisation, so only edges reach here; draw them in one solid colour

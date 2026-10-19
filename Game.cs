@@ -34,7 +34,7 @@ namespace _3DDemoA2
         private int _debugView;
         
         // Lighting toggle: off shows the raw texture colour, for comparing lit vs unlit
-        private bool _useLighting = true;
+        private bool _useLighting;
 
         // Camera vars
         private Camera? _camera;
@@ -47,12 +47,14 @@ namespace _3DDemoA2
         /// <param name="height">The height of the game window.</param>
         /// <param name="title">The title of the game window.</param>
         /// <param name="useBackfaceCulling">Whether to enable backface culling for rendering.</param>
-        public Game(int width, int height, string title, bool useBackfaceCulling = true)
+        /// <param name="useLighting">Whether to enable lighting for rendering.</param>
+        public Game(int width, int height, string title, bool useBackfaceCulling = true, bool useLighting = true)
             : base(GameWindowSettings.Default, NativeWindowSettings.Default)
         {
             _width = width;
             _height = height;
             _useBackfaceCulling = useBackfaceCulling;
+            _useLighting = useLighting;
             _title = title;
 
             // Set the window size and title
