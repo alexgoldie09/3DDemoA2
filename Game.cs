@@ -25,9 +25,9 @@ namespace _3DDemoA2
         private ShaderProgram? _modelShader;
         private bool _useBackfaceCulling;
 
-        // Island (temporary: moves into a StaticProp in Phase 3)
-        private Mesh? _islandMesh;
-        private Texture? _islandTexture;
+        // Every loaded model, drawn as one mesh with one texture and a fixed world transform.
+        // Temporary: Phase 3 splits the cannon into animated parts and the rest into static props.
+        private readonly List<SceneModel> _models = new();
 
         // Debug view: what the model shader outputs (cycled with V)
         private static readonly string[] DebugViewNames = ["Texture", "Normals", "UVs", "Wireframe"];
@@ -96,9 +96,12 @@ namespace _3DDemoA2
             // Create the shader program used for every textured model
             _modelShader = new ShaderProgram("Model.vert", "Model.frag");
 
-            // Load the island: OBJ file then CPU mesh data then GPU mesh, plus its baked texture
-            _islandMesh = new Mesh(ObjLoader.Load("Island.obj"), "Island");
-            _islandTexture = new Texture("IslandTexture.png");
+            // Load the models: OBJ file then CPU mesh data then GPU mesh, plus a baked texture each.
+            // All three were exported already sitting on y = 0, so only sideways offsets are needed
+            // to place them on the island's grass without overlapping.
+            LoadModel("Island", "Island.obj", "IslandTexture.png", Vector3.Zero);         // grass top at y = 0
+            LoadModel("Cannon", "Cannon.obj", "CannonTexture.png", new Vector3(-3f, 0f, 0f)); // all parts merged for now
+            LoadModel("Alien", "TestAlien.obj", "AlienTexture.png", new Vector3(4f, 0f, 0f));  // static test prop
 
             // --- Camera & input ---
             // Create the camera with the specified width, height, and initial position
@@ -116,8 +119,12 @@ namespace _3DDemoA2
             base.OnUnload();
 
             // Delete the OpenGL resources to free up GPU memory
-            _islandMesh?.Delete();
-            _islandTexture?.Delete();
+            foreach (var sceneModel in _models)
+            {
+                sceneModel.Mesh.Delete();
+                sceneModel.Texture.Delete();
+            }
+            _models.Clear();
             _modelShader?.Delete();
             // Shutdown the debug text system
             DebugText.Shutdown();
@@ -185,20 +192,21 @@ namespace _3DDemoA2
                 _modelShader.SetFloat("ambientStrength", 0.4f);
                 _modelShader.SetVector3("cameraPos", _camera.Position);
 
-                // --- Island ---
-                // Model setup: island sits at the world origin with its grass surface at y = 0
-                Matrix4 model = Matrix4.Identity;
-                _modelShader.SetMatrix4("model", model);
-                _modelShader.SetMatrix3("normalMatrix", CreateNormalMatrix(model));
-                
-                // Model lighting: island is matte so has no reflectivity, but the specular strength and shininess are still set to avoid shader warnings
+                // Material: everything is matte for now, but the specular strength and shininess are still set to avoid shader warnings
                 _modelShader.SetFloat("specularStrength", 0f);
                 _modelShader.SetFloat("shininess", 32f);
+                _modelShader.SetInt("Texture0", 0); // every model's texture is bound to texture unit 0
 
-                // Model rendering: bind the texture to texture unit 0, tell the shader to use that unit, then draw the mesh
-                _islandTexture?.Bind(0);
-                _modelShader.SetInt("Texture0", 0);
-                _islandMesh?.Draw();
+                // --- Models ---
+                // Each model uploads its own transform, binds its own texture, then draws its mesh
+                foreach (var sceneModel in _models)
+                {
+                    _modelShader.SetMatrix4("model", sceneModel.Transform);
+                    _modelShader.SetMatrix3("normalMatrix", CreateNormalMatrix(sceneModel.Transform));
+
+                    sceneModel.Texture.Bind(0);
+                    sceneModel.Mesh.Draw();
+                }
                 
                 // Back to filled polygons, so the debug text (and anything drawn later) isn't drawn as lines
                 GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Fill);
@@ -239,8 +247,8 @@ namespace _3DDemoA2
             // Toggle lighting on/off when the Tab key is pressed
             if (kb.IsKeyPressed(Keys.Tab))
                 _useLighting = !_useLighting;
-
-            // Update the camera based on keyboard and mouse input (the cursor is always grabbed for mouse-look)
+            
+            // Update the camera based on keyboard and mouse input, capturing the mouse when the window is focused
             _camera?.Update(kb, ms, args, captureMouse: true);
 
             // Toggle backface culling when the C key is pressed
@@ -268,13 +276,43 @@ namespace _3DDemoA2
 
         #region Helper Methods
         /// <summary>
+        /// Loads an OBJ model and its texture and adds it to the scene at the given position.
+        /// The OBJ's object/part names are ignored, so a multi-part file is drawn as one combined mesh.
+        /// </summary>
+        /// <param name="name">Name used in log messages.</param>
+        /// <param name="objFile">The .obj file in the Models folder.</param>
+        /// <param name="textureFile">The texture file in the Textures folder.</param>
+        /// <param name="position">World position of the model's origin.</param>
+        /// <param name="yawDegrees">Rotation around the vertical (Y) axis, in degrees.</param>
+        private void LoadModel(string name, string objFile, string textureFile, Vector3 position, float yawDegrees = 0f)
+        {
+            var mesh = new Mesh(ObjLoader.Load(objFile), name);
+            var texture = new Texture(textureFile);
+
+            // Row-vector convention: rotate first, then move into place
+            Matrix4 transform = Matrix4.CreateRotationY(MathHelper.DegreesToRadians(yawDegrees))
+                                * Matrix4.CreateTranslation(position);
+
+            _models.Add(new SceneModel(name, mesh, texture, transform));
+        }
+
+        /// <summary>
         /// Builds the normal matrix for a model matrix: the inverse-transpose of its upper 3x3.
         /// Normals must use this instead of the model matrix itself, otherwise non-uniform scaling
-        /// (e.g. the muzzle pulse later) would tilt them so they are no longer perpendicular to the surface.
+        /// (e.g. a squashed or stretched prop) would tilt them so they are no longer perpendicular to the surface.
         /// The translation is dropped because normals are directions, not points.
         /// </summary>
         private static Matrix3 CreateNormalMatrix(Matrix4 model)
             => new Matrix3(Matrix4.Transpose(Matrix4.Invert(model)));
         #endregion
+
+        /// <summary>
+        /// A loaded model: one GPU mesh, its texture, and where it sits in the world.
+        /// </summary>
+        /// <param name="Name">Name used in log messages.</param>
+        /// <param name="Mesh">The model's geometry on the GPU.</param>
+        /// <param name="Texture">The model's texture.</param>
+        /// <param name="Transform">Model matrix placing it in the world.</param>
+        private sealed record SceneModel(string Name, Mesh Mesh, Texture Texture, Matrix4 Transform);
     }
 }
