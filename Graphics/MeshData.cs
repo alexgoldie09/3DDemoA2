@@ -45,6 +45,16 @@ namespace _3DDemoA2.Graphics
         public int IndexCount => Indices.Count;
 
         /// <summary>
+        /// Moves every vertex by the same offset, effectively translating the entire mesh in 3D space.
+        /// </summary>
+        /// <param name="offset">The amount to move every vertex by.</param>
+        public void Translate(Vector3 offset)
+        {
+            for(int i = 0; i < Positions.Count; i++)
+                Positions[i] += offset;
+        }
+
+        /// <summary>
         /// Validates the mesh data to ensure it is well-formed and ready for rendering. Checks include:
         /// - Non-empty vertex and index lists.
         /// - Matching counts of positions, UVs, and normals.

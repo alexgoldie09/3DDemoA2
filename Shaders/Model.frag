@@ -44,7 +44,9 @@ void main()
         vec3 H = normalize(L + V);
         float specular = pow(max(dot(N, H), 0.0), shininess) * specularStrength;
 
-        vec3 colour = albedo * (ambientStrength + diffuse) * lightColor + specular * lightColor;
+        // Combine the components: ambient + diffuse + specular, modulated by the light colour and the albedo
+        // Metallic surfaces have a coloured specular highlight, so multiply the specular by the albedo too
+        vec3 colour = albedo * (ambientStrength + diffuse) * lightColor + specular * lightColor * albedo;        
         FragColor = vec4(colour, 1.0);
     }
 }

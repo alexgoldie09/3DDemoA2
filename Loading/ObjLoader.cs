@@ -6,7 +6,7 @@ using OpenTK.Mathematics;
 namespace _3DDemoA2.Loading
 {
     /// <summary>
-    /// Loads a Wavefront .obj file from the Models folder into MeshData.
+    /// Loads a wavefront .obj file from the Models folder into MeshData.
     ///
     /// How it works:
     ///  1. Read the file line by line, skipping blank lines and # comments.
@@ -17,8 +17,9 @@ namespace _3DDemoA2.Loading
     ///     combinations already seen, so shared corners reuse the same vertex (indexed drawing).
     ///  5. Faces with more than 3 corners are split into a triangle fan as a fallback.
     ///
-    /// Supported: v, vt, vn, f (v, v/vt, v//vn, v/vt/vn, and negative/relative indices).
-    /// Ignored: o, g, s, mtllib, usemtl and anything else (materials are bound in code instead).
+    /// Supported: v, vt, vn, f (v, v/vt, v//vn, v/vt/vn, and negative/relative indices), and o (named objects,
+    /// used by LoadParts to keep each part of a multi-part model separate).
+    /// Ignored: g, s, mtllib, usemtl and anything else (materials are bound in code instead).
     /// Winding is kept as exported (Blender exports counter-clockwise), matching GL.FrontFace(Ccw) in Game.
     /// </summary>
     internal static class ObjLoader
@@ -29,14 +30,35 @@ namespace _3DDemoA2.Loading
         private const int MaxWarnings = 5;
 
         /// <summary>
-        /// Loads an .obj file from the Models folder.
-        /// Never throws: problems are logged, and a missing file returns empty data (which Mesh refuses to upload).
+        /// Loads an .obj file from the Models folder as one mesh.
+        /// Problems are logged, and a missing file returns empty data.
         /// </summary>
-        /// <param name="fileName">The .obj file, relative to the Models folder (e.g. "Island.obj").</param>
+        /// <param name="fileName">The .obj file.</param>
         /// <returns>The mesh data, ready to be passed to a Mesh.</returns>
-        public static MeshData Load(string fileName)
+        public static MeshData Load(string fileName) => Parse(fileName, splitByObject: false)[fileName];
+
+        /// <summary>
+        /// Loads an .obj file from the Models folder as separate parts, one per named object in the file.
+        /// This is useful for multi-part models like vehicles, so that each part can be given its own transform.
+        /// </summary>
+        /// <param name="fileName">The .obj file.</param>
+        /// <returns>Each part's mesh data, keyed by its object name.</returns>
+        public static Dictionary<string, MeshData> LoadParts(string fileName) => Parse(fileName, splitByObject: true);
+
+        /// <summary>
+        /// Reads the file and builds the mesh data.
+        /// </summary>
+        /// <param name="fileName">The .obj file.</param>
+        /// <param name="splitByObject">True to start a new MeshData at every "o" line; false to merge everything.</param>
+        /// <returns>The mesh data keyed by object name (just the file name when not splitting).</returns>
+        private static Dictionary<string, MeshData> Parse(string fileName, bool splitByObject)
         {
-            var result = new MeshData();
+            // Faces go into current. It starts as a default part named after the file, which collects
+            // everything when not splitting (or any faces that appear before the first "o" line).
+            var meshes = new Dictionary<string, MeshData>();
+            var current = new MeshData();
+            meshes[fileName] = current;
+
             string path = AssetPaths.Model(fileName);
 
             string[] lines;
@@ -48,7 +70,7 @@ namespace _3DDemoA2.Loading
             {
                 Console.WriteLine($"Error loading model '{path}': {e.Message}");
                 DebugText.Log($"Model '{fileName}' could not be read (see console)", Color4.Red, 8f);
-                return result;
+                return meshes;
             }
 
             // Raw attribute lists, exactly as listed in the file
@@ -92,6 +114,18 @@ namespace _3DDemoA2.Loading
                             normals.Add(ParseVector3(parts));
                             break;
 
+                        case "o":
+                            // A new named object. When splitting, its faces go into their own MeshData,
+                            // with its own de-duplication so its indices start from 0.
+                            // The raw v/vt/vn lists are NOT reset: OBJ indices count from the top of the whole file.
+                            if (splitByObject)
+                            {
+                                current = new MeshData();
+                                meshes[line.Substring(1).Trim()] = current;
+                                vertexLookup = new Dictionary<(int Position, int UV, int Normal), uint>();
+                            }
+                            break;
+
                         case "f":
                             // Parse every corner first, so a bad corner rejects the whole face
                             // instead of leaving half a face in the mesh
@@ -122,9 +156,20 @@ namespace _3DDemoA2.Loading
                 }
             }
 
+            // Drop the default part if every face belonged to a named object
+            if (splitByObject && meshes.Count > 1 && meshes[fileName].VertexCount == 0)
+                meshes.Remove(fileName);
+
             // --- Report ---
+            int vertexTotal = 0, indexTotal = 0;
+            foreach (var mesh in meshes.Values)
+            {
+                vertexTotal += mesh.VertexCount;
+                indexTotal += mesh.IndexCount;
+            }
+            string partList = splitByObject ? $" in {meshes.Count} parts ({string.Join(", ", meshes.Keys)})" : "";
             string summary = $"{fileName}: {positions.Count} v, {uvs.Count} vt, {normals.Count} vn, " +
-                             $"{triangleCount} tris: {result.VertexCount} vertices, {result.IndexCount} indices";
+                             $"{triangleCount} tris: {vertexTotal} vertices, {indexTotal} indices{partList}";
             Console.WriteLine(summary);
             DebugText.Log(summary, Color4.LightGreen, 6f);
 
@@ -137,7 +182,7 @@ namespace _3DDemoA2.Loading
             if (missingNormals)
                 DebugText.Log($"{fileName}: some corners have no normals (export with Normals)", Color4.Orange, 8f);
 
-            return result;
+            return meshes;
 
             // Adds one triangle corner to the output, reusing the existing vertex if this exact
             // (position, UV, normal) combination has been seen before.
@@ -145,29 +190,29 @@ namespace _3DDemoA2.Loading
             {
                 if (!vertexLookup.TryGetValue(corner, out uint index))
                 {
-                    index = (uint)result.VertexCount;
+                    index = (uint)current.VertexCount;
                     vertexLookup[corner] = index;
 
-                    result.Positions.Add(positions[corner.Position]);
+                    current.Positions.Add(positions[corner.Position]);
 
                     if (corner.UV >= 0)
-                        result.UVs.Add(uvs[corner.UV]);
+                        current.UVs.Add(uvs[corner.UV]);
                     else
                     {
-                        result.UVs.Add(Vector2.Zero);
+                        current.UVs.Add(Vector2.Zero);
                         missingUVs = true;
                     }
 
                     if (corner.Normal >= 0)
-                        result.Normals.Add(normals[corner.Normal]);
+                        current.Normals.Add(normals[corner.Normal]);
                     else
                     {
-                        result.Normals.Add(Vector3.UnitY);
+                        current.Normals.Add(Vector3.UnitY);
                         missingNormals = true;
                     }
                 }
 
-                result.Indices.Add(index);
+                current.Indices.Add(index);
             }
         }
 

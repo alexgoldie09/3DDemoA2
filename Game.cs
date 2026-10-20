@@ -4,7 +4,7 @@ using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using _3DDemoA2.Graphics;
-using _3DDemoA2.Loading;
+using _3DDemoA2.Scene;
 using _3DDemoA2.Debugging;
 
 namespace _3DDemoA2
@@ -25,12 +25,18 @@ namespace _3DDemoA2
         private ShaderProgram? _modelShader;
         private bool _useBackfaceCulling;
 
-        // Every loaded model, drawn as one mesh with one texture and a fixed world transform.
-        // Temporary: Phase 3 splits the cannon into animated parts and the rest into static props.
-        private readonly List<SceneModel> _models = new();
+        // Scene: everything drawn with the model shader, through the common IRenderable interface
+        private readonly List<IRenderable> _scene = new();
 
-        // Debug view: what the model shader outputs (cycled with V)
-        private static readonly string[] DebugViewNames = ["Texture", "Normals", "UVs", "Wireframe"];
+        // The animated cannon (also in _scene) but kept separately so keyboard input can drive it
+        private Cannon? _cannon;
+
+        // How far the cannon may roll from the island's centre: the island's flat edges are 8.56 m out,
+        // minus about 1.6 m so the cannon's furthest point (barrel tip / wheel) stays on the grass
+        private const float CANNONROLLLIMIT = 6.9f;
+
+        // Debug view: what the model shader outputs to the screen, for checking normals, UVs and wireframe
+        private static readonly string[] DebugViewNames = { "Texture", "Normals", "UVs", "Wireframe" };
         private int _debugView;
         
         // Lighting toggle: off shows the raw texture colour, for comparing lit vs unlit
@@ -38,7 +44,7 @@ namespace _3DDemoA2
 
         // Camera vars
         private Camera? _camera;
-        private readonly Vector3 _initialCameraPosition = new Vector3(0f, 2f, 25f); // in front of the island, just above the grass
+        private readonly Vector3 _initialCameraPosition = new (0f, 2f, 25f); // in front of the island, just above the grass
 
         /// <summary>
         /// Constructor that initialises a new instance of the Game class with the specified width, height, and title.
@@ -76,11 +82,11 @@ namespace _3DDemoA2
             // --- Debugging Setup ---
             // Initialise the debug text system with the window width and height
             DebugText.Initialize(_width, _height);
-            DebugText.TextScale = 2f; // Set the scale of the debug text
+            DebugText.TextScale = 1.4f;
 
             // --- Render state ---
-            // Set the clear color to Dark Magenta, enable depth testing and face culling (if enabled)
-            GL.ClearColor(Color4.DarkMagenta);
+            // Set the clear color to SkyBlue, enable depth testing and face culling (if enabled)
+            GL.ClearColor(Color4.SkyBlue);
             GL.Enable(EnableCap.DepthTest);
             if (_useBackfaceCulling)
                 GL.Enable(EnableCap.CullFace);
@@ -96,12 +102,12 @@ namespace _3DDemoA2
             // Create the shader program used for every textured model
             _modelShader = new ShaderProgram("Model.vert", "Model.frag");
 
-            // Load the models: OBJ file then CPU mesh data then GPU mesh, plus a baked texture each.
-            // All three were exported already sitting on y = 0, so only sideways offsets are needed
-            // to place them on the island's grass without overlapping.
-            LoadModel("Island", "Island.obj", "IslandTexture.png", Vector3.Zero);         // grass top at y = 0
-            LoadModel("Cannon", "Cannon.obj", "CannonTexture.png", new Vector3(-3f, 0f, 0f)); // all parts merged for now
-            LoadModel("Alien", "TestAlien.obj", "AlienTexture.png", new Vector3(4f, 0f, 0f));  // static test prop
+            // Load the scene. All three models were exported already sitting on y = 0,
+            // so only sideways offsets are needed to place them on the island's grass without overlapping.
+            _scene.Add(new StaticProp("Island", "Island.obj", "IslandTexture.png", Vector3.Zero)); // grass top at y = 0
+            _scene.Add(new StaticProp("Alien", "TestAlien.obj", "AlienTexture.png", new Vector3(4f, 0f, 0f)));
+            _cannon = new Cannon(new Vector3(-3f, 0f, 0f), CANNONROLLLIMIT);
+            _scene.Add(_cannon);
 
             // --- Camera & input ---
             // Create the camera with the specified width, height, and initial position
@@ -119,12 +125,9 @@ namespace _3DDemoA2
             base.OnUnload();
 
             // Delete the OpenGL resources to free up GPU memory
-            foreach (var sceneModel in _models)
-            {
-                sceneModel.Mesh.Delete();
-                sceneModel.Texture.Delete();
-            }
-            _models.Clear();
+            foreach (var renderable in _scene)
+                renderable.Delete();
+            _scene.Clear();
             _modelShader?.Delete();
             // Shutdown the debug text system
             DebugText.Shutdown();
@@ -192,21 +195,13 @@ namespace _3DDemoA2
                 _modelShader.SetFloat("ambientStrength", 0.4f);
                 _modelShader.SetVector3("cameraPos", _camera.Position);
 
-                // Material: everything is matte for now, but the specular strength and shininess are still set to avoid shader warnings
-                _modelShader.SetFloat("specularStrength", 0f);
-                _modelShader.SetFloat("shininess", 32f);
-                _modelShader.SetInt("Texture0", 0); // every model's texture is bound to texture unit 0
+                // Material texture: every model's texture is bound to texture unit 0, so the shader always samples from that unit
+                _modelShader.SetInt("Texture0", 0);
 
-                // --- Models ---
-                // Each model uploads its own transform, binds its own texture, then draws its mesh
-                foreach (var sceneModel in _models)
-                {
-                    _modelShader.SetMatrix4("model", sceneModel.Transform);
-                    _modelShader.SetMatrix3("normalMatrix", CreateNormalMatrix(sceneModel.Transform));
-
-                    sceneModel.Texture.Bind(0);
-                    sceneModel.Mesh.Draw();
-                }
+                // --- Scene ---
+                // Each object binds its own texture and uploads its own model matrices
+                foreach (var renderable in _scene)
+                    renderable.Render(_modelShader);
                 
                 // Back to filled polygons, so the debug text (and anything drawn later) isn't drawn as lines
                 GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Fill);
@@ -261,6 +256,21 @@ namespace _3DDemoA2
                     GL.Disable(EnableCap.CullFace);
             }
 
+            // Cannon controls: arrows roll and turn, Shift + Up/Down raises and lowers the barrel
+            if (_cannon != null)
+            {
+                bool shift = kb.IsKeyDown(Keys.LeftShift) || kb.IsKeyDown(Keys.RightShift);
+                float upDown = (kb.IsKeyDown(Keys.Up) ? 0f : 1f) - (kb.IsKeyDown(Keys.Down) ? 0f : 1f);
+                float leftRight = (kb.IsKeyDown(Keys.Left) ? 1f : 0f) - (kb.IsKeyDown(Keys.Right) ? 1f : 0f);
+
+                if (shift)
+                    _cannon.Elevate(upDown, deltaTime);
+                else
+                    _cannon.Roll(upDown, deltaTime);
+
+                _cannon.Turn(leftRight, deltaTime);
+            }
+
             // Cycle the debug view (texture - normals - UVs - wireframe) when the V key is pressed
             if (kb.IsKeyPressed(Keys.V))
                 _debugView = (_debugView + 1) % DebugViewNames.Length;
@@ -268,51 +278,15 @@ namespace _3DDemoA2
             // Debug readouts (keyed, so they update in place instead of stacking)
             DebugText.Log($"FPS: {1.0 / deltaTime:0}", Color4.White, 0.5f, key: 1);
             DebugText.Log($"Press C for Backface Culling: {(_useBackfaceCulling ? "ON" : "OFF")}", Color4.Yellow, 0.5f, key: 2);
-            DebugText.Log($"Press V for Debug View: {DebugViewNames[_debugView]}", Color4.SandyBrown, 0.5f, key: 5);
-            DebugText.Log($"Press Tab to Toggle Lighting", Color4.Cyan, 0.5f, key: 3);
+            DebugText.Log($"Press V for Debug View: {DebugViewNames[_debugView]}", Color4.MediumVioletRed, 0.5f, key: 5);
+            DebugText.Log($"Press Tab to Toggle Lighting", Color4.DarkSlateBlue, 0.5f, key: 3);
             DebugText.Log($"Press Esc to Quit", Color4.Magenta, 0.5f, key: 4);
+            DebugText.Log($"WASD: Camera Front/Back/Left/Right, Q/E: Camera Up/Down", Color4.DarkGreen, 0.5f, key: 6);
+            DebugText.Log($"Arrows: Roll/Turn Cannon, Shift + Up/Down: Barrel", Color4.DarkGreen, 0.5f, key: 7);
+            if (_cannon != null)
+                DebugText.Log($"Barrel: {_cannon.Elevation:0} deg, Heading: {_cannon.Heading:0} deg",
+                    Color4.DarkGreen, 0.5f, key: 8);
         }
         #endregion
-
-        #region Helper Methods
-        /// <summary>
-        /// Loads an OBJ model and its texture and adds it to the scene at the given position.
-        /// The OBJ's object/part names are ignored, so a multi-part file is drawn as one combined mesh.
-        /// </summary>
-        /// <param name="name">Name used in log messages.</param>
-        /// <param name="objFile">The .obj file in the Models folder.</param>
-        /// <param name="textureFile">The texture file in the Textures folder.</param>
-        /// <param name="position">World position of the model's origin.</param>
-        /// <param name="yawDegrees">Rotation around the vertical (Y) axis, in degrees.</param>
-        private void LoadModel(string name, string objFile, string textureFile, Vector3 position, float yawDegrees = 0f)
-        {
-            var mesh = new Mesh(ObjLoader.Load(objFile), name);
-            var texture = new Texture(textureFile);
-
-            // Row-vector convention: rotate first, then move into place
-            Matrix4 transform = Matrix4.CreateRotationY(MathHelper.DegreesToRadians(yawDegrees))
-                                * Matrix4.CreateTranslation(position);
-
-            _models.Add(new SceneModel(name, mesh, texture, transform));
-        }
-
-        /// <summary>
-        /// Builds the normal matrix for a model matrix: the inverse-transpose of its upper 3x3.
-        /// Normals must use this instead of the model matrix itself, otherwise non-uniform scaling
-        /// (e.g. a squashed or stretched prop) would tilt them so they are no longer perpendicular to the surface.
-        /// The translation is dropped because normals are directions, not points.
-        /// </summary>
-        private static Matrix3 CreateNormalMatrix(Matrix4 model)
-            => new Matrix3(Matrix4.Transpose(Matrix4.Invert(model)));
-        #endregion
-
-        /// <summary>
-        /// A loaded model: one GPU mesh, its texture, and where it sits in the world.
-        /// </summary>
-        /// <param name="Name">Name used in log messages.</param>
-        /// <param name="Mesh">The model's geometry on the GPU.</param>
-        /// <param name="Texture">The model's texture.</param>
-        /// <param name="Transform">Model matrix placing it in the world.</param>
-        private sealed record SceneModel(string Name, Mesh Mesh, Texture Texture, Matrix4 Transform);
     }
 }
