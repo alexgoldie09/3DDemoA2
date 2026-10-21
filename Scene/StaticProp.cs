@@ -10,9 +10,9 @@ namespace _3DDemoA2.Scene
     internal class StaticProp : IRenderable
     {
         #region Private Fields
-        // The root and colour texture of the static prop (its material lives on the root part)
+        // The root and colour texture of the static prop (its material, which uses the texture, lives on the root part)
         private readonly ModelPart _root;
-        private readonly Texture _texture;
+        private readonly Texture _colorMap;
         #endregion
         
         /// <summary>
@@ -20,18 +20,25 @@ namespace _3DDemoA2.Scene
         /// </summary>
         /// <param name="name">Name used in log messages.</param>
         /// <param name="objFile">The .obj file.</param>
-        /// <param name="textureFile">The texture file.</param>
+        /// <param name="textureFile">The colour (albedo) texture file, owned and deleted by this prop.</param>
         /// <param name="position">World position of the model's origin.</param>
         /// <param name="yawDegrees">Rotation around the vertical (Y) axis, in degrees.</param>
-        /// <param name="material">How the surface reacts to light; null = matte. Its textures are owned by the caller.</param>
+        /// <param name="material">How the surface reacts to light; null = matte. Its AlbedoMap is set to this prop's
+        /// texture; any other maps are owned by the caller.</param>
         public StaticProp(string name, string objFile, string textureFile, Vector3 position, float yawDegrees = 0f, Material? material = null)
         {
-            _texture = new Texture(textureFile);
+            _colorMap = new Texture(textureFile);
+
+            if (material == null)
+                material = new Material(); // matte: no detail maps, roughness 1
+
+            material.AlbedoMap = _colorMap;
+
             _root = new ModelPart(name, new Mesh(ObjLoader.Load(objFile), name))
             {
                 Position = position,
                 Rotation = Quaternion.FromAxisAngle(Vector3.UnitY, MathHelper.DegreesToRadians(yawDegrees)),
-                Material = material ?? new Material() // matte: no maps, roughness 1
+                Material = material
             };
         }
         
@@ -40,11 +47,8 @@ namespace _3DDemoA2.Scene
         /// Draws the static prop. The shader is already bound, with the view, projection and lighting set.
         /// </summary>
         /// <param name="shader">The shader program to use for rendering.</param>
-        public void Render(ShaderProgram shader)
-        {
-            _texture.Bind(0);
+        public void Render(ShaderProgram shader) =>
             _root.Render(shader, Matrix4.Identity);
-        }
 
         /// <summary>
         /// Frees the static prop's GPU resources (meshes and textures).
@@ -52,7 +56,7 @@ namespace _3DDemoA2.Scene
         public void Delete()
         {
             _root.Mesh?.Delete();
-            _texture.Delete();
+            _colorMap.Delete();
         }
         #endregion
     }

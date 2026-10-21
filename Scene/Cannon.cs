@@ -61,7 +61,7 @@ namespace _3DDemoA2.Scene
         
         // GPU resources this class owns, deleted exactly once in Delete()
         private readonly List<Mesh> _meshes = new();
-        private readonly Texture _texture;
+        private readonly Texture _colorMap;
         private readonly Texture _metalNormalMap;
         private readonly Texture _metalMetallicMap;
         private readonly Texture _metalRoughnessMap;
@@ -81,7 +81,6 @@ namespace _3DDemoA2.Scene
         public Cannon(Vector3 position, float maxDistanceFromCentre)
         {
             _maxDistanceFromCentre = maxDistanceFromCentre;
-            _texture = new Texture("CannonTexture.png");
 
             var parts = ObjLoader.LoadParts("Cannon.obj");
 
@@ -94,11 +93,13 @@ namespace _3DDemoA2.Scene
             // --- Materials ---
             // Scratched metal for the whole cannon, set on the root so every part inherits it.
             // The maps decide metal vs dirt and smooth vs scratched per pixel.
+            _colorMap = new Texture("CannonColorTexture.png");
             _metalNormalMap = new Texture("MetalNormalGLTexture.jpg");
             _metalMetallicMap = new Texture("MetalMetallicTexture.jpg");
             _metalRoughnessMap = new Texture("MetalRoughnessTexture.jpg");
             _root.Material = new Material
             {
+                AlbedoMap = _colorMap,
                 NormalMap = _metalNormalMap,
                 MetallicMap = _metalMetallicMap,
                 RoughnessMap = _metalRoughnessMap,
@@ -107,8 +108,9 @@ namespace _3DDemoA2.Scene
                 DetailScale = METALDETAILSCALE
             };
 
-            // Rubber wheels override it: no maps, not metallic, mostly rough (a faint, broad sheen)
-            _wheels.Material = new Material { Metallic = 0f, Roughness = 0.9f };
+            // Rubber wheels override it: same colour atlas but no detail maps, not metallic,
+            // mostly rough (a faint, broad sheen)
+            _wheels.Material = new Material { AlbedoMap = _colorMap, Metallic = 0f, Roughness = 0.9f };
         }
         
         #region Public API
@@ -179,8 +181,7 @@ namespace _3DDemoA2.Scene
         /// <param name="shader">The shader program to use for rendering.</param>
         public void Render(ShaderProgram shader)
         {
-            // One atlas covers every part, so it is bound once for the whole hierarchy
-            _texture.Bind(0);
+            // Each part's material binds its own maps (including the colour atlas) as it draws
             _root.Render(shader, Matrix4.Identity);
         }
 
@@ -192,7 +193,7 @@ namespace _3DDemoA2.Scene
             foreach (var mesh in _meshes)
                 mesh.Delete();
             _meshes.Clear();
-            _texture.Delete();
+            _colorMap.Delete();
             _metalNormalMap.Delete();
             _metalMetallicMap.Delete();
             _metalRoughnessMap.Delete();

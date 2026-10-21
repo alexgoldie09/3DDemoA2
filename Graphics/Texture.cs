@@ -91,7 +91,7 @@ namespace _3DDemoA2.Graphics
         #region IGraphicsResources Functions
         /// <summary>
         /// Binds the texture to a texture unit. The shader's sampler uniform must be set to the same unit number
-        /// (e.g. shader.SetInt("Texture0", 0)). Separate units let a shader sample several textures at once,
+        /// (e.g. shader.SetInt("AlbedoMap", 0)). Separate units let a shader sample several textures at once,
         /// such as a model texture on unit 0 and the skybox cube map on unit 1.
         /// </summary>
         /// <param name="unit">The texture unit to bind to (0, 1, 2...).</param>

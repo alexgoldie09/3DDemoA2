@@ -38,7 +38,7 @@ namespace _3DDemoA2
         // Debug view: what the model shader outputs to the screen, for checking normals, UVs, wireframe and the material maps.
         // The order must match the DebugView values in Model.frag (wireframe stays at 3)
         private static readonly string[] DebugViewNames =
-            { "Texture", "Normals", "UVs", "Wireframe", "Mapped Normals", "Metallic", "Roughness" };
+            { "Texture", "Normals", "UVs", "Wireframe", "Metallic", "Roughness" };
         private int _debugView;
         
         // Lighting toggle: off shows the raw texture colour, for comparing lit vs unlit
@@ -106,8 +106,8 @@ namespace _3DDemoA2
 
             // Load the scene. All three models were exported already sitting on y = 0,
             // so only sideways offsets are needed to place them on the island's grass without overlapping.
-            _scene.Add(new StaticProp("Island", "Island.obj", "IslandTexture.png", Vector3.Zero)); // grass top at y = 0
-            _scene.Add(new StaticProp("Alien", "TestAlien.obj", "AlienTexture.png", new Vector3(4f, 0f, 0f)));
+            _scene.Add(new StaticProp("Island", "Island.obj", "IslandColorTexture.png", Vector3.Zero)); // grass top at y = 0
+            _scene.Add(new StaticProp("Alien", "TestAlien.obj", "AlienColorTexture.png", new Vector3(4f, 0f, 0f)));
             _cannon = new Cannon(new Vector3(-3f, 0f, 0f), CANNONROLLLIMIT);
             _scene.Add(_cannon);
 
@@ -197,14 +197,20 @@ namespace _3DDemoA2
                 _modelShader.SetFloat("ambientStrength", 0.5f);
                 _modelShader.SetVector3("cameraPos", _camera.Position);
 
-                // Texture units: every model's colour texture is on unit 0, and the material maps on units 1 to 3
-                _modelShader.SetInt("Texture0", 0);
+                // Environment for reflections: a stand-in for the skybox, a gradient from sky (up) through a
+                // pale horizon to grass (down). The sky matches the clear colour so metals reflect the background.
+                _modelShader.SetVector3("skyColour", new Vector3(Color4.SkyBlue.R, Color4.SkyBlue.G, Color4.SkyBlue.B));
+                _modelShader.SetVector3("horizonColour", new Vector3(0.85f, 0.9f, 0.95f));
+                _modelShader.SetVector3("groundColour", new Vector3(0.3f, 0.38f, 0.22f));
+
+                // Texture units: each material map has its own unit (albedo 0, normal 1, metallic 2, roughness 3)
+                _modelShader.SetInt("AlbedoMap", Material.ALBEDOMAPUNIT);
                 _modelShader.SetInt("NormalMap", Material.NORMALMAPUNIT);
                 _modelShader.SetInt("MetallicMap", Material.METALLICMAPUNIT);
                 _modelShader.SetInt("RoughnessMap", Material.ROUGHNESSMAPUNIT);
 
                 // --- Scene ---
-                // Each object binds its own texture and uploads its own model matrices
+                // Each object applies its own materials (binding their maps) and uploads its own model matrices
                 foreach (var renderable in _scene)
                     renderable.Render(_modelShader);
                 

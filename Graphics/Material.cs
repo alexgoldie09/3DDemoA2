@@ -1,7 +1,10 @@
+using OpenTK.Mathematics;
+
 namespace _3DDemoA2.Graphics
 {
     /// <summary>
-    /// How a surface reacts to light: optional normal, metallic and roughness maps, plus a value for each.
+    /// How a surface looks and reacts to light: optional albedo (colour), normal, metallic and roughness maps,
+    /// plus a value for each.
     /// Each value is multiplied by its map when the map is present, or used on its own when it isn't
     /// (the same "factor x texture" convention the glTF format uses). So one atlas can be fully metal
     /// on one part while another part, like the wheels, just uses plain values with no maps.
@@ -13,14 +16,20 @@ namespace _3DDemoA2.Graphics
     internal class Material
     {
         #region Texture Unit Constants
-        // Unit 0 holds the colour texture (bound by each model)
-        // Unit 4 onwards is left free (e.g. for the skybox cube map)
+        // One texture unit per map. Unit 4 onwards is left free (e.g. for the skybox cube map)
+        public const int ALBEDOMAPUNIT = 0;
         public const int NORMALMAPUNIT = 1;
         public const int METALLICMAPUNIT = 2;
         public const int ROUGHNESSMAPUNIT = 3;
         #endregion
 
         #region Public Fields
+        /// <summary>
+        /// The surface colour (albedo) map, e.g. a model's baked atlas, or null to use Colour alone.
+        /// Sampled with the model's own UVs (not DetailScale), since it is laid out to match the model.
+        /// </summary>
+        public Texture? AlbedoMap { get; set; }
+
         /// <summary>
         /// Tangent-space normal map (OpenGL convention, green = +Y), or null to use the mesh normals.
         /// </summary>
@@ -35,6 +44,11 @@ namespace _3DDemoA2.Graphics
         /// Greyscale roughness map (black = smooth, white = rough), or null to use Roughness alone.
         /// </summary>
         public Texture? RoughnessMap { get; set; }
+
+        /// <summary>
+        /// Colour tint, multiplying the albedo map if there is one (white = the map's colours unchanged).
+        /// </summary>
+        public Vector3 Colour { get; set; } = Vector3.One;
 
         /// <summary>
         /// How metallic the surface is, 0 to 1 (multiplies the metallic map if there is one).
@@ -53,7 +67,8 @@ namespace _3DDemoA2.Graphics
         public float NormalStrength { get; set; } = 1f;
 
         /// <summary>
-        /// How many times the maps repeat across the UVs. Tiling detail maps on an atlas need more than 1,
+        /// How many times the detail maps (normal, metallic, roughness) repeat across the UVs.
+        /// Tiling detail maps on an atlas need more than 1,
         /// otherwise one copy is stretched over the whole model.
         /// </summary>
         public float DetailScale { get; set; } = 1f;
@@ -66,14 +81,17 @@ namespace _3DDemoA2.Graphics
         /// <param name="shader">The bound model shader.</param>
         public void Apply(ShaderProgram shader)
         {
+            AlbedoMap?.Bind(ALBEDOMAPUNIT);
             NormalMap?.Bind(NORMALMAPUNIT);
             MetallicMap?.Bind(METALLICMAPUNIT);
             RoughnessMap?.Bind(ROUGHNESSMAPUNIT);
 
+            shader.SetInt("useAlbedoMap", AlbedoMap != null ? 1 : 0);
             shader.SetInt("useNormalMap", NormalMap != null ? 1 : 0);
             shader.SetInt("useMetallicMap", MetallicMap != null ? 1 : 0);
             shader.SetInt("useRoughnessMap", RoughnessMap != null ? 1 : 0);
 
+            shader.SetVector3("albedoFactor", Colour);
             shader.SetFloat("metallicFactor", Metallic);
             shader.SetFloat("roughnessFactor", Roughness);
             shader.SetFloat("normalStrength", NormalStrength);
