@@ -29,9 +29,8 @@ namespace _3DDemoA2.Scene
         private const float TURNSPEED = 60f; // degrees per second
         private const float ELEVATESPEED = 30f; // degrees per second
         
-        // Material properties for the cannon's shader
-        private const float SPECULARSTRENGTH = 0.8f;
-        private const float SHININESS = 256f;
+        // How many times the tiling metal maps repeat across the cannon's atlas
+        private const float METALDETAILSCALE = 2f;
         #endregion
         
         #region Public Fields
@@ -63,6 +62,9 @@ namespace _3DDemoA2.Scene
         // GPU resources this class owns, deleted exactly once in Delete()
         private readonly List<Mesh> _meshes = new();
         private readonly Texture _texture;
+        private readonly Texture _metalNormalMap;
+        private readonly Texture _metalMetallicMap;
+        private readonly Texture _metalRoughnessMap;
 
         // How far the root may move from the centre of the world, to keep it on the island
         private readonly float _maxDistanceFromCentre;
@@ -88,6 +90,25 @@ namespace _3DDemoA2.Scene
             mount.Position = AxlePivot;
             _wheels = mount.AddChild(CreatePart(parts, "Wheels"));
             _barrel = mount.AddChild(CreatePart(parts, "Barrel"));
+
+            // --- Materials ---
+            // Scratched metal for the whole cannon, set on the root so every part inherits it.
+            // The maps decide metal vs dirt and smooth vs scratched per pixel.
+            _metalNormalMap = new Texture("MetalNormalGLTexture.jpg");
+            _metalMetallicMap = new Texture("MetalMetallicTexture.jpg");
+            _metalRoughnessMap = new Texture("MetalRoughnessTexture.jpg");
+            _root.Material = new Material
+            {
+                NormalMap = _metalNormalMap,
+                MetallicMap = _metalMetallicMap,
+                RoughnessMap = _metalRoughnessMap,
+                Metallic = 1f,
+                Roughness = 1f,
+                DetailScale = METALDETAILSCALE
+            };
+
+            // Rubber wheels override it: no maps, not metallic, mostly rough (a faint, broad sheen)
+            _wheels.Material = new Material { Metallic = 0f, Roughness = 0.9f };
         }
         
         #region Public API
@@ -158,10 +179,6 @@ namespace _3DDemoA2.Scene
         /// <param name="shader">The shader program to use for rendering.</param>
         public void Render(ShaderProgram shader)
         {
-            // Material: polished metal gives a strong, tight highlight
-            shader.SetFloat("specularStrength", SPECULARSTRENGTH);
-            shader.SetFloat("shininess", SHININESS);
-            
             // One atlas covers every part, so it is bound once for the whole hierarchy
             _texture.Bind(0);
             _root.Render(shader, Matrix4.Identity);
@@ -176,6 +193,9 @@ namespace _3DDemoA2.Scene
                 mesh.Delete();
             _meshes.Clear();
             _texture.Delete();
+            _metalNormalMap.Delete();
+            _metalMetallicMap.Delete();
+            _metalRoughnessMap.Delete();
         }
         #endregion
         

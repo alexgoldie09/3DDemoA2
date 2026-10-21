@@ -15,7 +15,8 @@ namespace _3DDemoA2.Graphics
       public const int POSITIONLOCATION = 0;
       public const int UVLOCATION = 1;
       public const int NORMALLOCATION = 2;
-
+      public const int TANGENTLOCATION = 3;
+      public const int BITANGENTLOCATION = 4;
       #endregion
 
       #region Public Fields
@@ -39,14 +40,14 @@ namespace _3DDemoA2.Graphics
       /// The various OpenGL objects used to store the mesh data on the GPU.
       /// </summary>
       private readonly VAO? _vao;
-
       private readonly VBO? _positionVbo;
       private readonly VBO? _uvVbo;
       private readonly VBO? _normalVbo;
+      private readonly VBO? _tangentVbo;
+      private readonly VBO? _bitangentVbo;
       private readonly IBO? _ibo;
 
       #endregion
-
       /// <summary>
       /// Constructor that validates the mesh data and uploads it to the GPU.
       /// Invalid data is logged and not uploaded, and the mesh then draws nothing instead of crashing.
@@ -60,6 +61,10 @@ namespace _3DDemoA2.Graphics
          if (!data.Validate(name))
             return;
 
+         // Tangents aren't stored in OBJ files, so they are worked out here for every mesh (used by normal mapping)
+         if (data.Tangents.Count != data.VertexCount)
+            data.ComputeTangents();
+
          _vao = new VAO();
 
          // One VBO per attribute, each linked to its shader location
@@ -71,6 +76,12 @@ namespace _3DDemoA2.Graphics
 
          _normalVbo = new VBO(data.Normals);
          _vao.LinkToVao(NORMALLOCATION, 3, _normalVbo);
+
+         _tangentVbo = new VBO(data.Tangents);
+         _vao.LinkToVao(TANGENTLOCATION, 3, _tangentVbo);
+
+         _bitangentVbo = new VBO(data.Bitangents);
+         _vao.LinkToVao(BITANGENTLOCATION, 3, _bitangentVbo);
 
          // Create the IBO while the VAO is bound so the VAO remembers it
          _vao.Bind();
@@ -108,6 +119,8 @@ namespace _3DDemoA2.Graphics
          _positionVbo?.Delete();
          _uvVbo?.Delete();
          _normalVbo?.Delete();
+         _tangentVbo?.Delete();
+         _bitangentVbo?.Delete();
          _ibo?.Delete();
       }
       #endregion

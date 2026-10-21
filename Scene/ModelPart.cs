@@ -36,6 +36,12 @@ namespace _3DDemoA2.Scene
         public Vector3 Scale { get; set; } = Vector3.One;
         
         /// <summary>
+        /// How this part's surface reacts to light. Null = use the parent's material,
+        /// so a material set on the root covers the whole model unless a child overrides it.
+        /// </summary>
+        public Material? Material { get; set; }
+
+        /// <summary>
         /// The model parts that are children of this part, forming a hierarchy.
         /// </summary>
         public List<ModelPart> Children { get; } = new();
@@ -78,23 +84,33 @@ namespace _3DDemoA2.Scene
         /// </summary>
         /// <param name="shader">The bound model shader.</param>
         /// <param name="parentWorld">The parent's world matrix (Identity for a root part).</param>
-        public void Render(ShaderProgram shader, Matrix4 parentWorld)
+        /// <param name="parentMaterial">The parent's material, used when this part has none of its own.</param>
+        public void Render(ShaderProgram shader, Matrix4 parentWorld, Material? parentMaterial = null)
         {
             Matrix4 world = LocalMatrix * parentWorld;
+            Material material = Material ?? parentMaterial ?? DefaultMaterial;
 
             if (Mesh != null)
             {
+                // Uniforms keep their value between draws, so every mesh applies its material
+                // rather than inheriting whatever the previous object left behind
+                material.Apply(shader);
                 shader.SetMatrix4("model", world);
                 shader.SetMatrix3("normalMatrix", CreateNormalMatrix(world));
                 Mesh.Draw();
             }
 
             foreach (var child in Children)
-                child.Render(shader, world);
+                child.Render(shader, world, material);
         }
         #endregion
 
         #region Helper Methods
+        /// <summary>
+        /// Used when neither this part nor any parent has a material: matte, no maps.
+        /// </summary>
+        private static readonly Material DefaultMaterial = new();
+
         /// <summary>
         /// Builds the normal matrix for a model matrix: the inverse-transpose of its upper 3x3.
         /// Normals must use this instead of the model matrix itself, otherwise non-uniform scaling

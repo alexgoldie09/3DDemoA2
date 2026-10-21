@@ -30,6 +30,16 @@ namespace _3DDemoA2.Graphics
         public List<Vector3> Normals { get; } = new();
         
         /// <summary>
+        /// Tangents for each vertex: the direction the texture's U axis runs across the surface.
+        /// </summary>
+        public List<Vector3> Tangents { get; } = new();
+
+        /// <summary>
+        /// Bitangents for each vertex: the direction the texture's V axis runs across the surface.
+        /// </summary>
+        public List<Vector3> Bitangents { get; } = new();
+        
+        /// <summary>
         /// Indices defining the order in which vertices are connected to form triangles (three indices per triangle).
         /// </summary>
         public List<uint> Indices { get; } = new();
@@ -52,6 +62,64 @@ namespace _3DDemoA2.Graphics
         {
             for(int i = 0; i < Positions.Count; i++)
                 Positions[i] += offset;
+        }
+        
+        /// <summary>
+        /// Works out a tangent and bitangent for every vertex from the triangles' positions and UVs.
+        /// For each triangle, the two edges are expressed in terms of how far U and V change along them;
+        /// solving that gives the directions U and V run in 3D. Each vertex then averages the results
+        /// of the triangles that share it.
+        /// </summary>
+        public void ComputeTangents()
+        {
+            var tangentSums = new Vector3[VertexCount];
+            var bitangentSums = new Vector3[VertexCount];
+
+            for (int i = 0; i + 2 < Indices.Count; i += 3)
+            {
+                int i0 = (int)Indices[i], i1 = (int)Indices[i + 1], i2 = (int)Indices[i + 2];
+
+                Vector3 edge1 = Positions[i1] - Positions[i0];
+                Vector3 edge2 = Positions[i2] - Positions[i0];
+                Vector2 deltaUV1 = UVs[i1] - UVs[i0];
+                Vector2 deltaUV2 = UVs[i2] - UVs[i0];
+
+                // A triangle whose UVs have no area can't define a direction, so it is skipped
+                float determinant = deltaUV1.X * deltaUV2.Y - deltaUV2.X * deltaUV1.Y;
+                if (MathF.Abs(determinant) < 1e-8f)
+                    continue;
+
+                float f = 1f / determinant;
+                Vector3 tangent = f * (deltaUV2.Y * edge1 - deltaUV1.Y * edge2);
+                Vector3 bitangent = f * (-deltaUV2.X * edge1 + deltaUV1.X * edge2);
+
+                foreach (int index in new[] { i0, i1, i2 })
+                {
+                    tangentSums[index] += tangent;
+                    bitangentSums[index] += bitangent;
+                }
+            }
+
+            Tangents.Clear();
+            Bitangents.Clear();
+            for (int v = 0; v < VertexCount; v++)
+            {
+                Vector3 tangent = tangentSums[v];
+                Vector3 bitangent = bitangentSums[v];
+
+                // Fallback for vertices only touched by skipped triangles: any pair of directions
+                // perpendicular to the normal (the normal map then has no meaningful orientation there)
+                if (tangent.LengthSquared < 1e-12f || bitangent.LengthSquared < 1e-12f)
+                {
+                    Vector3 normal = Normals[v];
+                    Vector3 helper = MathF.Abs(normal.Y) < 0.99f ? Vector3.UnitY : Vector3.UnitX;
+                    tangent = Vector3.Cross(normal, helper);
+                    bitangent = Vector3.Cross(normal, tangent);
+                }
+
+                Tangents.Add(Vector3.Normalize(tangent));
+                Bitangents.Add(Vector3.Normalize(bitangent));
+            }
         }
 
         /// <summary>

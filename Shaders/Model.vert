@@ -4,10 +4,14 @@
 layout(location = 0) in vec3 aPos; // Vertex position (model space)
 layout(location = 1) in vec2 aTexCoord; // Texture coordinate
 layout(location = 2) in vec3 aNormal; // Surface normal (model space)
+layout(location = 3) in vec3 aTangent; // Direction the texture's U axis runs (model space), for normal mapping
+layout(location = 4) in vec3 aBitangent; // Direction the texture's V axis runs (model space), for normal mapping
 
 out vec2 TexCoord; // Texture coordinate for the fragment shader
 out vec3 WorldNormal; // Normal in world space (for lighting / reflections)
 out vec3 WorldPos; // Position in world space (for lighting / reflections)
+out vec3 WorldTangent; // Tangent in world space (normal mapping)
+out vec3 WorldBitangent; // Bitangent in world space (normal mapping)
 
 uniform mat4 model; // Model matrix (object to world)
 uniform mat4 view; // View matrix (world to camera)
@@ -22,6 +26,11 @@ void main()
     WorldPos = worldPos.xyz;
     WorldNormal = aNormal * normalMatrix;
     TexCoord = aTexCoord;
+
+    // Tangent and bitangent lie along the surface, so they move with the model matrix itself
+    // (w = 0: they are directions, so the translation is ignored)
+    WorldTangent = (vec4(aTangent, 0.0) * model).xyz;
+    WorldBitangent = (vec4(aBitangent, 0.0) * model).xyz;
 
     gl_Position = worldPos * view * projection;
 }

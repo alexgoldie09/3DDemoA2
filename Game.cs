@@ -35,8 +35,10 @@ namespace _3DDemoA2
         // minus about 1.6 m so the cannon's furthest point (barrel tip / wheel) stays on the grass
         private const float CANNONROLLLIMIT = 6.9f;
 
-        // Debug view: what the model shader outputs to the screen, for checking normals, UVs and wireframe
-        private static readonly string[] DebugViewNames = { "Texture", "Normals", "UVs", "Wireframe" };
+        // Debug view: what the model shader outputs to the screen, for checking normals, UVs, wireframe and the material maps.
+        // The order must match the DebugView values in Model.frag (wireframe stays at 3)
+        private static readonly string[] DebugViewNames =
+            { "Texture", "Normals", "UVs", "Wireframe", "Mapped Normals", "Metallic", "Roughness" };
         private int _debugView;
         
         // Lighting toggle: off shows the raw texture colour, for comparing lit vs unlit
@@ -192,11 +194,14 @@ namespace _3DDemoA2
                 // Lighting: a single directional light (the sun) and ambient light
                 _modelShader.SetVector3("lightDir", new Vector3(-1.4f, -1f, -0.3f)); // sun from above, move a bit to one side
                 _modelShader.SetVector3("lightColor", new Vector3(1f, 0.97f, 0.9f)); // warm daylight
-                _modelShader.SetFloat("ambientStrength", 0.4f);
+                _modelShader.SetFloat("ambientStrength", 0.5f);
                 _modelShader.SetVector3("cameraPos", _camera.Position);
 
-                // Material texture: every model's texture is bound to texture unit 0, so the shader always samples from that unit
+                // Texture units: every model's colour texture is on unit 0, and the material maps on units 1 to 3
                 _modelShader.SetInt("Texture0", 0);
+                _modelShader.SetInt("NormalMap", Material.NORMALMAPUNIT);
+                _modelShader.SetInt("MetallicMap", Material.METALLICMAPUNIT);
+                _modelShader.SetInt("RoughnessMap", Material.ROUGHNESSMAPUNIT);
 
                 // --- Scene ---
                 // Each object binds its own texture and uploads its own model matrices

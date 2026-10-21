@@ -10,10 +10,9 @@ namespace _3DDemoA2.Scene
     internal class StaticProp : IRenderable
     {
         #region Private Fields
-        // The root, texture, and specular strength of the static prop
+        // The root and colour texture of the static prop (its material lives on the root part)
         private readonly ModelPart _root;
         private readonly Texture _texture;
-        private readonly float _specularStrength;
         #endregion
         
         /// <summary>
@@ -24,16 +23,16 @@ namespace _3DDemoA2.Scene
         /// <param name="textureFile">The texture file.</param>
         /// <param name="position">World position of the model's origin.</param>
         /// <param name="yawDegrees">Rotation around the vertical (Y) axis, in degrees.</param>
-        /// <param name="specularStrength">The strength of the specular highlight.</param>
-        public StaticProp(string name, string objFile, string textureFile, Vector3 position, float yawDegrees = 0f, float specularStrength = 0f)
+        /// <param name="material">How the surface reacts to light; null = matte. Its textures are owned by the caller.</param>
+        public StaticProp(string name, string objFile, string textureFile, Vector3 position, float yawDegrees = 0f, Material? material = null)
         {
             _texture = new Texture(textureFile);
             _root = new ModelPart(name, new Mesh(ObjLoader.Load(objFile), name))
             {
                 Position = position,
-                Rotation = Quaternion.FromAxisAngle(Vector3.UnitY, MathHelper.DegreesToRadians(yawDegrees))
+                Rotation = Quaternion.FromAxisAngle(Vector3.UnitY, MathHelper.DegreesToRadians(yawDegrees)),
+                Material = material ?? new Material() // matte: no maps, roughness 1
             };
-            _specularStrength = specularStrength;
         }
         
         #region IRenderable Functions
@@ -43,10 +42,6 @@ namespace _3DDemoA2.Scene
         /// <param name="shader">The shader program to use for rendering.</param>
         public void Render(ShaderProgram shader)
         {
-            // Material: matte by default (no highlight)
-            shader.SetFloat("specularStrength", _specularStrength);
-            shader.SetFloat("shininess", 32f);
-            
             _texture.Bind(0);
             _root.Render(shader, Matrix4.Identity);
         }
