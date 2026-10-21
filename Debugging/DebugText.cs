@@ -172,7 +172,7 @@ namespace _3DDemoA2.Debugging
             _shader.SetMatrix4("projection",
                 Matrix4.CreateOrthographicOffCenter(0f, _screenWidth, _screenHeight, 0f, -1f, 1f));
             // Font atlas on texture unit 0, and point the sampler at that unit
-            _font.Bind(0);
+            _font.Bind();
             _shader.SetInt("FontAtlas", 0);
 
             GL.BindVertexArray(_vao);

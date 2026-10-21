@@ -12,7 +12,7 @@ namespace _3DDemoA2.Graphics
         /// <summary>
         /// Gets the ID of the Vertex Buffer Object (VBO).
         /// </summary>
-        public int ID { get; set; }
+        public int ID { get; }
 
         /// <summary>
         /// Constructor that initialises a new instance of the VBO class with Vector3 data.
@@ -44,11 +44,11 @@ namespace _3DDemoA2.Graphics
         /// <summary>
         /// Binds the Vertex Buffer Object (VBO) to the current OpenGL context.
         /// </summary>
-        public void Bind(int unit = 0) => GL.BindBuffer(BufferTarget.ArrayBuffer, ID);
+        public void Bind() => GL.BindBuffer(BufferTarget.ArrayBuffer, ID);
         /// <summary>
         /// Unbinds the Vertex Buffer Object (VBO) from the current OpenGL context.
         /// </summary>
-        public void Unbind(int unit = 0) => GL.BindBuffer(BufferTarget.ArrayBuffer, unit);
+        public void Unbind() => GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
         /// <summary>
         /// Deletes the Vertex Buffer Object (VBO) from the GPU.
         /// </summary>

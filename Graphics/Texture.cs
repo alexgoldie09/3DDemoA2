@@ -14,20 +14,25 @@ namespace _3DDemoA2.Graphics
         /// <summary>
         /// Gets the ID of the texture object in OpenGL.
         /// </summary>
-        public int ID { get; set; }
+        public int ID { get; }
+        
+        /// <summary>
+        /// The texture unit this texture always binds to (e.g. Material.NORMALMAPUNIT).
+        /// </summary>
+        public int Unit { get; private set; }
         
         #region Constructors
         /// <summary>
         /// Constructor that initialises a new instance of the Texture class and loads a texture from the Textures folder.
         /// </summary>
         /// <param name="filename">The texture file, relative to the Textures folder.</param>
+        /// <param name="unit">The texture unit this texture always binds to (e.g. Material.NORMALMAPUNIT).</param>
         /// <param name="pixelPerfect">
-        /// True for pixel art such as the debug font: nearest filtering, no mipmaps, so pixels stay crisp.
-        /// False (default) for model textures: trilinear filtering with mipmaps, so the texture stays smooth
-        /// up close and doesn't shimmer when seen at a distance or a shallow angle.
         /// </param>
-        public Texture(string filename, bool pixelPerfect = false)
+        public Texture(string filename, int unit = 0, bool pixelPerfect = false)
         {
+            Unit = unit;
+            
             if (string.IsNullOrEmpty(filename))
             {
                 DebugText.Log("Texture filename is null or empty.", Color4.Red, 6f);
@@ -96,9 +101,11 @@ namespace _3DDemoA2.Graphics
         /// <param name="red">Red, 0 to 255.</param>
         /// <param name="green">Green, 0 to 255.</param>
         /// <param name="blue">Blue, 0 to 255.</param>
-        /// <param name="alpha">Alpha, 0 to 255.</param>
-        public Texture(byte red, byte green, byte blue, byte alpha = 255)
+        /// <param name="unit">The texture unit this texture always binds to (e.g. Material.NORMALMAPUNIT).</param>
+        public Texture(byte red, byte green, byte blue, int unit = 0)
         {
+            Unit = unit;
+            
             // Uploads always happen on unit 0 (see the file constructor)
             GL.ActiveTexture(TextureUnit.Texture0);
 
@@ -111,9 +118,9 @@ namespace _3DDemoA2.Graphics
             GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
             GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
 
-            byte[] pixel = { red, green, blue, alpha };
-            GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba, 1, 1, 0,
-                PixelFormat.Rgba, PixelType.UnsignedByte, pixel);
+            byte[] pixel = { red, green, blue, 255 };
+            GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgb, 1, 1, 0,
+                PixelFormat.Rgb, PixelType.UnsignedByte, pixel);
 
             GL.BindTexture(TextureTarget.Texture2D, 0);
         }
@@ -125,20 +132,18 @@ namespace _3DDemoA2.Graphics
         /// (e.g. shader.SetInt("AlbedoMap", 0)). Separate units let a shader sample several textures at once,
         /// such as a model texture on unit 0 and the skybox cube map on unit 1.
         /// </summary>
-        /// <param name="unit">The texture unit to bind to (0, 1, 2...).</param>
-        public void Bind(int unit = 0)
+        public void Bind()
         {
-            GL.ActiveTexture(TextureUnit.Texture0 + unit);
+            GL.ActiveTexture(TextureUnit.Texture0 + Unit);
             GL.BindTexture(TextureTarget.Texture2D, ID);
         }
 
         /// <summary>
         /// Unbinds any 2D texture from the given texture unit.
         /// </summary>
-        /// <param name="unit">The texture unit to clear.</param>
-        public void Unbind(int unit = 0)
+        public void Unbind()
         {
-            GL.ActiveTexture(TextureUnit.Texture0 + unit);
+            GL.ActiveTexture(TextureUnit.Texture0 + Unit);
             GL.BindTexture(TextureTarget.Texture2D, 0);
         }
 

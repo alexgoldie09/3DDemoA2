@@ -45,11 +45,11 @@ namespace _3DDemoA2.Graphics
         /// <summary>
         /// Binds the Vertex Array Object (VAO) to the current OpenGL context.
         /// </summary>
-        public void Bind(int unit = 0) => GL.BindVertexArray(ID);
+        public void Bind() => GL.BindVertexArray(ID);
         /// <summary>
         /// Unbinds the Vertex Array Object (VAO) from the current OpenGL context.
         /// </summary>
-        public void Unbind(int unit = 0) => GL.BindVertexArray(unit);
+        public void Unbind() => GL.BindVertexArray(0);
         /// <summary>
         /// Deletes the Vertex Array Object (VAO) from the GPU.
         /// </summary>

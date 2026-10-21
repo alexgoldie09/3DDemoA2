@@ -10,7 +10,7 @@ namespace _3DDemoA2.Graphics
         /// <summary>
         /// Gets the ID of the Index Buffer Object (IBO).
         /// </summary>
-        public int ID { get; set; }
+        public int ID { get; }
 
         /// <summary>
         /// Constructor that intialises a new instance of the IBO class with the specified index data.
@@ -29,11 +29,11 @@ namespace _3DDemoA2.Graphics
         /// <summary>
         /// Binds the Index Buffer Object (IBO) to the current OpenGL context.
         /// </summary>
-        public void Bind(int unit = 0) => GL.BindBuffer(BufferTarget.ElementArrayBuffer, ID);
+        public void Bind() => GL.BindBuffer(BufferTarget.ElementArrayBuffer, ID);
         /// <summary>
         /// Unbinds the Index Buffer Object (IBO) from the current OpenGL context.
         /// </summary>
-        public void Unbind(int unit = 0) => GL.BindBuffer(BufferTarget.ElementArrayBuffer, unit);
+        public void Unbind() => GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
         /// <summary>
         /// Deletes the Index Buffer Object (IBO) from the GPU.
         /// </summary>

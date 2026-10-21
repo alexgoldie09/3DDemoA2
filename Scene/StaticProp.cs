@@ -47,19 +47,19 @@ namespace _3DDemoA2.Scene
                     material.Metallic = 1f;
             }
 
-            Texture? colorMap = LoadTexture(colorMapFile);
+            Texture? colorMap = LoadTexture(colorMapFile, Material.ALBEDOMAPUNIT);
             if (colorMap != null)
                 material.AlbedoMap = colorMap;
 
-            Texture? normalMap = LoadTexture(normalMapFile);
+            Texture? normalMap = LoadTexture(normalMapFile, Material.NORMALMAPUNIT);
             if (normalMap != null)
                 material.NormalMap = normalMap;
 
-            Texture? metallicMap = LoadTexture(metallicMapFile);
+            Texture? metallicMap = LoadTexture(metallicMapFile, Material.METALLICMAPUNIT);
             if (metallicMap != null)
                 material.MetallicMap = metallicMap;
 
-            Texture? roughnessMap = LoadTexture(roughnessMapFile);
+            Texture? roughnessMap = LoadTexture(roughnessMapFile, Material.ROUGHNESSMAPUNIT);
             if (roughnessMap != null)
                 material.RoughnessMap = roughnessMap;
 
@@ -71,7 +71,7 @@ namespace _3DDemoA2.Scene
             };
         }
         
-        #region IRenderable Functions
+        #region Public API
         /// <summary>
         /// Draws the static prop. The shader is already bound, with the view, projection and lighting set.
         /// </summary>
@@ -96,13 +96,14 @@ namespace _3DDemoA2.Scene
         /// Loads a texture and keeps it for deleting later, or returns null when no file is given.
         /// </summary>
         /// <param name="file">The texture file in the Textures folder, or null.</param>
+        /// <param name="unit">The texture unit for the map slot it fills (e.g. Material.NORMALMAPUNIT).</param>
         /// <returns>The loaded texture, or null.</returns>
-        private Texture? LoadTexture(string? file)
+        private Texture? LoadTexture(string? file, int unit)
         {
             if (file == null)
                 return null;
 
-            var texture = new Texture(file);
+            var texture = new Texture(file, unit);
             _textures.Add(texture);
             return texture;
         }

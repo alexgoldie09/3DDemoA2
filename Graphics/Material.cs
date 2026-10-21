@@ -24,12 +24,11 @@ namespace _3DDemoA2.Graphics
         #endregion
 
         #region Default Textures
-        // Bound in place of a missing map, so every sampler always has a texture (macOS warns about empty units).
-        // White leaves a value unchanged (value x 1); flat blue (128, 128, 255) unpacks to about (0, 0, 1),
-        // a normal pointing straight out of the surface, so the mesh normal is left as it is.
-        // Created on first use (they need the OpenGL context), shared by every material, freed by DeleteDefaults.
-        private static Texture? _whiteTexture;
-        private static Texture? _flatNormalTexture;
+        // Bound in place of a missing map, so every sampler always has a texture.
+        private static Texture? _defaultAlbedo;
+        private static Texture? _defaultNormal;
+        private static Texture? _defaultMetallic;
+        private static Texture? _defaultRoughness;
         #endregion
 
         #region Redundant State Tracking
@@ -52,21 +51,25 @@ namespace _3DDemoA2.Graphics
         /// <summary>
         /// The surface colour (albedo) map, e.g. a model's baked atlas, or null to use Colour alone.
         /// Sampled with the model's own UVs (not DetailScale), since it is laid out to match the model.
+        /// Must be created for unit ALBEDOMAPUNIT.
         /// </summary>
         public Texture? AlbedoMap { get; set; }
 
         /// <summary>
         /// Tangent-space normal map (OpenGL convention, green = +Y), or null to use the mesh normals.
+        /// Must be created for unit NORMALMAPUNIT.
         /// </summary>
         public Texture? NormalMap { get; set; }
 
         /// <summary>
         /// Greyscale metallic map (white = metal), or null to use Metallic alone.
+        /// Must be created for unit METALLICMAPUNIT.
         /// </summary>
         public Texture? MetallicMap { get; set; }
 
         /// <summary>
         /// Greyscale roughness map (black = smooth, white = rough), or null to use Roughness alone.
+        /// Must be created for unit ROUGHNESSMAPUNIT.
         /// </summary>
         public Texture? RoughnessMap { get; set; }
 
@@ -118,15 +121,20 @@ namespace _3DDemoA2.Graphics
             _lastApplied = this;
             AppliedCount++;
 
-            if (_whiteTexture == null)
-                _whiteTexture = new Texture(255, 255, 255);
-            if (_flatNormalTexture == null)
-                _flatNormalTexture = new Texture(128, 128, 255);
+            if (_defaultAlbedo == null)
+                _defaultAlbedo = new Texture(255, 255, 255, ALBEDOMAPUNIT);
+            if (_defaultNormal == null)
+                _defaultNormal = new Texture(128, 128, 255, NORMALMAPUNIT);
+            if (_defaultMetallic == null)
+                _defaultMetallic = new Texture(255, 255, 255, METALLICMAPUNIT);
+            if (_defaultRoughness == null)
+                _defaultRoughness = new Texture(255, 255, 255, ROUGHNESSMAPUNIT);
 
-            BindOrDefault(AlbedoMap, _whiteTexture, ALBEDOMAPUNIT);
-            BindOrDefault(NormalMap, _flatNormalTexture, NORMALMAPUNIT);
-            BindOrDefault(MetallicMap, _whiteTexture, METALLICMAPUNIT);
-            BindOrDefault(RoughnessMap, _whiteTexture, ROUGHNESSMAPUNIT);
+            // Each texture binds to the unit it was created for
+            BindOrDefault(AlbedoMap, _defaultAlbedo);
+            BindOrDefault(NormalMap, _defaultNormal);
+            BindOrDefault(MetallicMap, _defaultMetallic);
+            BindOrDefault(RoughnessMap, _defaultRoughness);
 
             shader.SetVector3("albedoFactor", Colour);
             shader.SetFloat("metallicFactor", Metallic);
@@ -153,16 +161,28 @@ namespace _3DDemoA2.Graphics
         {
             _lastApplied = null;
 
-            if (_whiteTexture != null)
+            if (_defaultAlbedo != null)
             {
-                _whiteTexture.Delete();
-                _whiteTexture = null;
+                _defaultAlbedo.Delete();
+                _defaultAlbedo = null;
             }
 
-            if (_flatNormalTexture != null)
+            if (_defaultNormal != null)
             {
-                _flatNormalTexture.Delete();
-                _flatNormalTexture = null;
+                _defaultNormal.Delete();
+                _defaultNormal = null;
+            }
+
+            if (_defaultMetallic != null)
+            {
+                _defaultMetallic.Delete();
+                _defaultMetallic = null;
+            }
+
+            if (_defaultRoughness != null)
+            {
+                _defaultRoughness.Delete();
+                _defaultRoughness = null;
             }
         }
         #endregion
@@ -172,14 +192,13 @@ namespace _3DDemoA2.Graphics
         /// Binds a map to its texture unit, or the default texture when the material has no such map.
         /// </summary>
         /// <param name="map">The material's map, or null.</param>
-        /// <param name="fallback">The neutral default to bind instead.</param>
-        /// <param name="unit">The texture unit.</param>
-        private static void BindOrDefault(Texture? map, Texture fallback, int unit)
+        /// <param name="fallback">The neutral default to bind instead (created for the same unit).</param>
+        private static void BindOrDefault(Texture? map, Texture fallback)
         {
             if (map != null)
-                map.Bind(unit);
+                map.Bind();
             else
-                fallback.Bind(unit);
+                fallback.Bind();
         }
         #endregion
     }

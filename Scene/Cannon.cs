@@ -45,7 +45,7 @@ namespace _3DDemoA2.Scene
         
         /// <summary>
         /// Gets the current heading of the cannon in degrees,
-        /// where 0 points along the positive Z-axis.
+        /// where 0 is the model's rest pose, with the muzzle pointing along the negative Z-axis.
         /// </summary>
         public float Heading { get; private set; }
 
@@ -105,8 +105,9 @@ namespace _3DDemoA2.Scene
             // --- Materials ---
             // Scratched metal for the whole cannon, set on the root so every part inherits it.
             // The maps decide metal vs dirt and smooth vs scratched per pixel.
-            Texture? colorMap = LoadTexture(colorMapFile);
-            Texture? roughnessMap = LoadTexture(roughnessMapFile);
+            // The colour atlas is shared by both materials below, which works because both use it as the albedo map (unit 0)
+            Texture? colorMap = LoadTexture(colorMapFile, Material.ALBEDOMAPUNIT);
+            Texture? roughnessMap = LoadTexture(roughnessMapFile, Material.ROUGHNESSMAPUNIT);
 
             // With a roughness map, a value of 1 lets the map decide; without one, an even polished finish
             float roughness = METALROUGHNESS;
@@ -116,8 +117,8 @@ namespace _3DDemoA2.Scene
             _root.Material = new Material
             {
                 AlbedoMap = colorMap,
-                NormalMap = LoadTexture(normalMapFile),
-                MetallicMap = LoadTexture(metallicMapFile),
+                NormalMap = LoadTexture(normalMapFile, Material.NORMALMAPUNIT),
+                MetallicMap = LoadTexture(metallicMapFile, Material.METALLICMAPUNIT),
                 RoughnessMap = roughnessMap,
                 Metallic = 1f,
                 Roughness = roughness,
@@ -190,7 +191,7 @@ namespace _3DDemoA2.Scene
         }
         #endregion
         
-        #region IRenderable Functions
+        #region Public API
         /// <summary>
         /// Draws the cannon. The shader is already bound, with the view, projection and lighting set.
         /// </summary>
@@ -221,13 +222,14 @@ namespace _3DDemoA2.Scene
         /// Loads a texture and keeps it for deleting later, or returns null when no file is given.
         /// </summary>
         /// <param name="file">The texture file in the Textures folder, or null.</param>
+        /// <param name="unit">The texture unit for the map slot it fills (e.g. Material.NORMALMAPUNIT).</param>
         /// <returns>The loaded texture, or null.</returns>
-        private Texture? LoadTexture(string? file)
+        private Texture? LoadTexture(string? file, int unit)
         {
             if (file == null)
                 return null;
 
-            var texture = new Texture(file);
+            var texture = new Texture(file, unit);
             _textures.Add(texture);
             return texture;
         }

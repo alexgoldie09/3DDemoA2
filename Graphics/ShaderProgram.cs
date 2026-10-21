@@ -14,7 +14,7 @@ namespace _3DDemoA2.Graphics
         /// <summary>
         /// Gets the ID of the shader program.
         /// </summary>
-        public int ID { get; set; }
+        public int ID { get; }
         
         /// <summary>
         /// A dictionary to cache uniform locations for efficient access.
@@ -119,11 +119,11 @@ namespace _3DDemoA2.Graphics
         /// <summary>
         /// Binds the shader program for use in rendering.
         /// </summary>
-        public void Bind(int unit = 0) => GL.UseProgram(ID);
+        public void Bind() => GL.UseProgram(ID);
         /// <summary>
         /// Unbinds the shader program, reverting to the default OpenGL state.
         /// </summary>
-        public void Unbind(int unit = 0) => GL.UseProgram(unit);
+        public void Unbind() => GL.UseProgram(0);
         /// <summary>
         /// Deletes the shader program from the GPU, freeing up resources.
         /// </summary>

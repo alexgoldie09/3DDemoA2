@@ -25,20 +25,9 @@ namespace _3DDemoA2
         public Vector3 Right { get; private set; } = Vector3.UnitX;
         
         /// <summary>
-        /// Call this right after re-grabbing the cursor so the next frame's mouse
-        /// delta is measured from the fresh position instead of jumping.
-        /// </summary>
-        public void ResetMouseState() => _firstMove = true;
-        
-        /// <summary>
         /// Gets or sets the position of the camera in 3D space.
         /// </summary>
         public Vector3 Position { get => _position; set => _position = value; }
-        
-        /// <summary>
-        /// Gets the last recorded position of the mouse cursor, used for calculating mouse movement deltas.
-        /// </summary>
-        public Vector2 LastPosition { get; private set; }
         #endregion
         
         #region Private fields
@@ -53,7 +42,8 @@ namespace _3DDemoA2
         private float _pitch;
         private float _yaw = -90f;
 
-        // Mouse state
+        // Mouse state: the last cursor position (for measuring movement) and whether there is one yet
+        private Vector2 _lastMousePosition;
         private bool _firstMove = true;
         #endregion
 
@@ -103,14 +93,14 @@ namespace _3DDemoA2
             {
                 if (_firstMove)
                 {
-                    LastPosition = new Vector2(ms.X, ms.Y);
+                    _lastMousePosition = new Vector2(ms.X, ms.Y);
                     _firstMove = false;
                 }
                 else
                 {
-                    var deltaX = ms.X - LastPosition.X;
-                    var deltaY = ms.Y - LastPosition.Y;
-                    LastPosition = new Vector2(ms.X, ms.Y);
+                    var deltaX = ms.X - _lastMousePosition.X;
+                    var deltaY = ms.Y - _lastMousePosition.Y;
+                    _lastMousePosition = new Vector2(ms.X, ms.Y);
 
                     _yaw += deltaX * SENSITIVITY;
                     _pitch -= deltaY * SENSITIVITY;

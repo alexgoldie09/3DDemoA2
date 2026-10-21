@@ -37,10 +37,10 @@ namespace _3DDemoA2
         private const float CANNONROLLLIMIT = 6.9f;
 
         // Debug view: what the model shader outputs to the screen, for checking normals, UVs, wireframe and the material maps.
-        // The order must match the DebugView values in Model.frag (wireframe stays at 3)
-        private static readonly string[] DebugViewNames =
-            { "Texture", "Normals", "UVs", "Wireframe", "Metallic", "Roughness" };
-        private int _debugView;
+        // Must be in the same order as the DebugView values in Model.frag
+        private enum DebugView { Texture, Normals, UVs, Wireframe, Metallic, Roughness }
+        private static readonly int DebugViewCount = Enum.GetValues<DebugView>().Length;
+        private DebugView _debugView;
         
         // Lighting toggle: off shows the raw texture colour, for comparing lit vs unlit
         private bool _useLighting;
@@ -153,14 +153,15 @@ namespace _3DDemoA2
                 metallicMapFile: null,
                 roughnessMapFile: null));
 
-            _scene.Add(new Cannon("Cannon", "Cannon.obj", new Vector3(-3f, 0f, 0f),
+            // The cannon is kept in its own field as well (for the keyboard controls), so it is created first
+            // and then added, rather than looked up by its position in the list
+            _cannon = new Cannon("Cannon", "Cannon.obj", new Vector3(-3f, 0f, 0f),
                 colorMapFile: "CannonColorTexture.png",
                 normalMapFile: "MetalNormalGLTexture.jpg",
                 metallicMapFile: "MetalMetallicTexture.jpg",
                 roughnessMapFile: "MetalRoughnessTexture.jpg",
-                maxDistanceFromCentre: CANNONROLLLIMIT));
-            
-            _cannon = _scene[2] as Cannon;
+                maxDistanceFromCentre: CANNONROLLLIMIT);
+            _scene.Add(_cannon);
 
             // --- Camera & input ---
             // Create the camera with the specified width, height, and initial position
@@ -243,12 +244,12 @@ namespace _3DDemoA2
                 // (the light, environment, texture units and projection are set in OnLoad / OnResize)
                 _modelShader.SetMatrix4("view", _camera.GetViewMatrix());
                 _modelShader.SetVector3("cameraPos", _camera.Position);
-                _modelShader.SetInt("DebugView", _debugView);
+                _modelShader.SetInt("DebugView", (int)_debugView);
                 _modelShader.SetInt("UseLighting", _useLighting ? 1 : 0);
                 
                 // Wireframe: rasterise only the triangle edges
                 // Culling still applies, so with culling ON only the edges of front-facing triangles are drawn
-                if (_debugView == 3)
+                if (_debugView == DebugView.Wireframe)
                     GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Line);
                 
                 // --- Scene ---
@@ -320,7 +321,8 @@ namespace _3DDemoA2
             if (_cannon != null)
             {
                 bool shift = kb.IsKeyDown(Keys.LeftShift) || kb.IsKeyDown(Keys.RightShift);
-                float upDown = (kb.IsKeyDown(Keys.Up) ? 0f : 1f) - (kb.IsKeyDown(Keys.Down) ? 0f : 1f);
+                // Down is positive and Up negative on purpose: that way round the controls felt right in testing
+                float upDown = (kb.IsKeyDown(Keys.Down) ? 1f : 0f) - (kb.IsKeyDown(Keys.Up) ? 1f : 0f);
                 float leftRight = (kb.IsKeyDown(Keys.Left) ? 1f : 0f) - (kb.IsKeyDown(Keys.Right) ? 1f : 0f);
 
                 if (shift)
@@ -333,14 +335,14 @@ namespace _3DDemoA2
 
             // Cycle the debug view (texture - normals - UVs - wireframe) when the V key is pressed
             if (kb.IsKeyPressed(Keys.V))
-                _debugView = (_debugView + 1) % DebugViewNames.Length;
+                _debugView = (DebugView)(((int)_debugView + 1) % DebugViewCount);
 
             // Debug readouts (keyed, so they update in place instead of stacking)
             DebugText.Log($"Frame: {_averageFrameMs:0.0} ms ({1000.0 / Math.Max(_averageFrameMs, 0.001):0} FPS), " +
                           $"CPU render: {_averageRenderMs:0.00} ms",
                 Color4.White, 0.5f, key: 1);
             DebugText.Log($"Press C for Backface Culling: {(_useBackfaceCulling ? "ON" : "OFF")}", Color4.Yellow, 0.5f, key: 2);
-            DebugText.Log($"Press V for Debug View: {DebugViewNames[_debugView]}", Color4.MediumVioletRed, 0.5f, key: 5);
+            DebugText.Log($"Press V for Debug View: {_debugView}", Color4.MediumVioletRed, 0.5f, key: 5);
             DebugText.Log($"Press Tab to Toggle Lighting", Color4.DarkSlateBlue, 0.5f, key: 3);
             DebugText.Log($"Press Esc to Quit", Color4.Magenta, 0.5f, key: 4);
             DebugText.Log($"WASD: Camera Front/Back/Left/Right, Q/E: Camera Up/Down", Color4.DarkGreen, 0.5f, key: 6);
