@@ -106,10 +106,27 @@ namespace _3DDemoA2
 
             // Load the scene. All three models were exported already sitting on y = 0,
             // so only sideways offsets are needed to place them on the island's grass without overlapping.
-            _scene.Add(new StaticProp("Island", "Island.obj", "IslandColorTexture.png", Vector3.Zero)); // grass top at y = 0
-            _scene.Add(new StaticProp("Alien", "TestAlien.obj", "AlienColorTexture.png", new Vector3(4f, 0f, 0f)));
-            _cannon = new Cannon(new Vector3(-3f, 0f, 0f), CANNONROLLLIMIT);
-            _scene.Add(_cannon);
+            // Each model names its four texture files (null = no map: the material's neutral default is used).
+            _scene.Add(new StaticProp("Island", "Island.obj", Vector3.Zero, // grass top at y = 0
+                colorMapFile: "IslandColorTexture.png",
+                normalMapFile: null,
+                metallicMapFile: null,
+                roughnessMapFile: null));
+
+            _scene.Add(new StaticProp("Alien", "TestAlien.obj", new Vector3(4f, 0f, 0f),
+                colorMapFile: "AlienColorTexture.png",
+                normalMapFile: null,
+                metallicMapFile: null,
+                roughnessMapFile: null));
+
+            _scene.Add(new Cannon("Cannon", "Cannon.obj", new Vector3(-3f, 0f, 0f),
+                colorMapFile: "CannonColorTexture.png",
+                normalMapFile: "MetalNormalGLTexture.jpg",
+                metallicMapFile: "MetalMetallicTexture.jpg",
+                roughnessMapFile: "MetalRoughnessTexture.jpg",
+                maxDistanceFromCentre: CANNONROLLLIMIT));
+            
+            _cannon = _scene[2] as Cannon;
 
             // --- Camera & input ---
             // Create the camera with the specified width, height, and initial position

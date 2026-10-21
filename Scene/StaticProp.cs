@@ -5,34 +5,63 @@ using OpenTK.Mathematics;
 namespace _3DDemoA2.Scene
 {
     /// <summary>
-    /// Represents a static prop in the scene, which is a 3D model with a single texture that does not animate or move.
+    /// Represents a static prop in the scene: a 3D model that does not animate or move, drawn with one material
+    /// built from up to four texture files (colour, normal, metallic, roughness). Any file left as null uses the
+    /// material's neutral default instead.
     /// </summary>
     internal class StaticProp : IRenderable
     {
         #region Private Fields
-        // The root and colour texture of the static prop (its material, which uses the texture, lives on the root part)
+        // The root of the static prop (its material lives on the root part)
         private readonly ModelPart _root;
-        private readonly Texture _colorMap;
+
+        // Every texture this prop loaded, deleted exactly once in Delete()
+        private readonly List<Texture> _textures = new();
         #endregion
         
         /// <summary>
-        /// Constructor that loads the model and its texture and places it in the world.
+        /// Constructor that loads the model and its textures and places it in the world.
+        /// The textures are owned and deleted by this prop.
         /// </summary>
         /// <param name="name">Name used in log messages.</param>
         /// <param name="objFile">The .obj file.</param>
-        /// <param name="textureFile">The colour (albedo) texture file, owned and deleted by this prop.</param>
         /// <param name="position">World position of the model's origin.</param>
+        /// <param name="colorMapFile">The colour (albedo) texture file, or null for plain white.</param>
+        /// <param name="normalMapFile">The normal map file (OpenGL convention), or null for the mesh normals.</param>
+        /// <param name="metallicMapFile">The metallic map file, or null for the material's Metallic value alone.</param>
+        /// <param name="roughnessMapFile">The roughness map file, or null for the material's Roughness value alone.</param>
         /// <param name="yawDegrees">Rotation around the vertical (Y) axis, in degrees.</param>
-        /// <param name="material">How the surface reacts to light; null = matte. Its AlbedoMap is set to this prop's
-        /// texture; any other maps are owned by the caller.</param>
-        public StaticProp(string name, string objFile, string textureFile, Vector3 position, float yawDegrees = 0f, Material? material = null)
+        /// <param name="material">The material values to use (e.g. DetailScale); null = a new matte material.
+        /// Any texture file given above replaces the matching map in it.</param>
+        public StaticProp(string name, string objFile, Vector3 position,
+            string? colorMapFile, string? normalMapFile, string? metallicMapFile, string? roughnessMapFile,
+            float yawDegrees = 0f, Material? material = null)
         {
-            _colorMap = new Texture(textureFile);
-
             if (material == null)
-                material = new Material(); // matte: no detail maps, roughness 1
+            {
+                material = new Material(); // matte: roughness 1, not metallic
 
-            material.AlbedoMap = _colorMap;
+                // A metallic map is multiplied by the Metallic value, so it needs 1 to show
+                // (the default 0 would cancel it out). Roughness already defaults to 1.
+                if (metallicMapFile != null)
+                    material.Metallic = 1f;
+            }
+
+            Texture? colorMap = LoadTexture(colorMapFile);
+            if (colorMap != null)
+                material.AlbedoMap = colorMap;
+
+            Texture? normalMap = LoadTexture(normalMapFile);
+            if (normalMap != null)
+                material.NormalMap = normalMap;
+
+            Texture? metallicMap = LoadTexture(metallicMapFile);
+            if (metallicMap != null)
+                material.MetallicMap = metallicMap;
+
+            Texture? roughnessMap = LoadTexture(roughnessMapFile);
+            if (roughnessMap != null)
+                material.RoughnessMap = roughnessMap;
 
             _root = new ModelPart(name, new Mesh(ObjLoader.Load(objFile), name))
             {
@@ -56,7 +85,26 @@ namespace _3DDemoA2.Scene
         public void Delete()
         {
             _root.Mesh?.Delete();
-            _colorMap.Delete();
+            foreach (var texture in _textures)
+                texture.Delete();
+            _textures.Clear();
+        }
+        #endregion
+
+        #region Helper Methods
+        /// <summary>
+        /// Loads a texture and keeps it for deleting later, or returns null when no file is given.
+        /// </summary>
+        /// <param name="file">The texture file in the Textures folder, or null.</param>
+        /// <returns>The loaded texture, or null.</returns>
+        private Texture? LoadTexture(string? file)
+        {
+            if (file == null)
+                return null;
+
+            var texture = new Texture(file);
+            _textures.Add(texture);
+            return texture;
         }
         #endregion
     }

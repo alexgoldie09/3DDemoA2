@@ -31,6 +31,9 @@ namespace _3DDemoA2.Scene
         
         // How many times the tiling metal maps repeat across the cannon's atlas
         private const float METALDETAILSCALE = 2f;
+
+        // Roughness for the metal when no roughness map is given (fairly polished)
+        private const float METALROUGHNESS = 0.35f;
         #endregion
         
         #region Public Fields
@@ -61,10 +64,7 @@ namespace _3DDemoA2.Scene
         
         // GPU resources this class owns, deleted exactly once in Delete()
         private readonly List<Mesh> _meshes = new();
-        private readonly Texture _colorMap;
-        private readonly Texture _metalNormalMap;
-        private readonly Texture _metalMetallicMap;
-        private readonly Texture _metalRoughnessMap;
+        private readonly List<Texture> _textures = new();
 
         // How far the root may move from the centre of the world, to keep it on the island
         private readonly float _maxDistanceFromCentre;
@@ -75,16 +75,26 @@ namespace _3DDemoA2.Scene
 
         /// <summary>
         /// Constructor that loads the cannon's parts, re-centres each on the axle and builds the hierarchy.
+        /// The parameters follow the same order as StaticProp's; any texture file left as null uses the
+        /// material's neutral default (no map). The normal, metallic and roughness maps are for the metal parts.
         /// </summary>
+        /// <param name="name">Name used for the root part and in log messages.</param>
+        /// <param name="objFile">The .obj file, which must contain parts named Mount, Wheels and Barrel.</param>
         /// <param name="position">Starting position on the ground.</param>
+        /// <param name="colorMapFile">The colour (albedo) atlas, shared by every part, or null for plain white.</param>
+        /// <param name="normalMapFile">The metal's normal map (OpenGL convention), or null for the mesh normals.</param>
+        /// <param name="metallicMapFile">The metal's metallic map, or null for fully metal everywhere.</param>
+        /// <param name="roughnessMapFile">The metal's roughness map, or null for an even, fairly polished finish.</param>
         /// <param name="maxDistanceFromCentre">How far from the island's centre the cannon may roll.</param>
-        public Cannon(Vector3 position, float maxDistanceFromCentre)
+        public Cannon(string name, string objFile, Vector3 position,
+            string? colorMapFile, string? normalMapFile, string? metallicMapFile, string? roughnessMapFile,
+            float maxDistanceFromCentre)
         {
             _maxDistanceFromCentre = maxDistanceFromCentre;
 
-            var parts = ObjLoader.LoadParts("Cannon.obj");
+            var parts = ObjLoader.LoadParts(objFile);
 
-            _root = new ModelPart("Cannon") { Position = position };
+            _root = new ModelPart(name) { Position = position };
             ModelPart mount = _root.AddChild(CreatePart(parts, "Mount"));
             mount.Position = AxlePivot;
             _wheels = mount.AddChild(CreatePart(parts, "Wheels"));
@@ -93,24 +103,28 @@ namespace _3DDemoA2.Scene
             // --- Materials ---
             // Scratched metal for the whole cannon, set on the root so every part inherits it.
             // The maps decide metal vs dirt and smooth vs scratched per pixel.
-            _colorMap = new Texture("CannonColorTexture.png");
-            _metalNormalMap = new Texture("MetalNormalGLTexture.jpg");
-            _metalMetallicMap = new Texture("MetalMetallicTexture.jpg");
-            _metalRoughnessMap = new Texture("MetalRoughnessTexture.jpg");
+            Texture? colorMap = LoadTexture(colorMapFile);
+            Texture? roughnessMap = LoadTexture(roughnessMapFile);
+
+            // With a roughness map, a value of 1 lets the map decide; without one, an even polished finish
+            float roughness = METALROUGHNESS;
+            if (roughnessMap != null)
+                roughness = 1f;
+
             _root.Material = new Material
             {
-                AlbedoMap = _colorMap,
-                NormalMap = _metalNormalMap,
-                MetallicMap = _metalMetallicMap,
-                RoughnessMap = _metalRoughnessMap,
+                AlbedoMap = colorMap,
+                NormalMap = LoadTexture(normalMapFile),
+                MetallicMap = LoadTexture(metallicMapFile),
+                RoughnessMap = roughnessMap,
                 Metallic = 1f,
-                Roughness = 1f,
+                Roughness = roughness,
                 DetailScale = METALDETAILSCALE
             };
 
             // Rubber wheels override it: same colour atlas but no detail maps, not metallic,
             // mostly rough (a faint, broad sheen)
-            _wheels.Material = new Material { AlbedoMap = _colorMap, Metallic = 0f, Roughness = 0.9f };
+            _wheels.Material = new Material { AlbedoMap = colorMap, Metallic = 0f, Roughness = 0.9f };
         }
         
         #region Public API
@@ -186,33 +200,48 @@ namespace _3DDemoA2.Scene
         }
 
         /// <summary>
-        /// Frees the cannon's GPU resources (meshes and texture).
+        /// Frees the cannon's GPU resources (meshes and textures).
         /// </summary>
         public void Delete()
         {
             foreach (var mesh in _meshes)
                 mesh.Delete();
             _meshes.Clear();
-            _colorMap.Delete();
-            _metalNormalMap.Delete();
-            _metalMetallicMap.Delete();
-            _metalRoughnessMap.Delete();
+
+            foreach (var texture in _textures)
+                texture.Delete();
+            _textures.Clear();
         }
         #endregion
         
         #region Helper Methods
         /// <summary>
+        /// Loads a texture and keeps it for deleting later, or returns null when no file is given.
+        /// </summary>
+        /// <param name="file">The texture file in the Textures folder, or null.</param>
+        /// <returns>The loaded texture, or null.</returns>
+        private Texture? LoadTexture(string? file)
+        {
+            if (file == null)
+                return null;
+
+            var texture = new Texture(file);
+            _textures.Add(texture);
+            return texture;
+        }
+
+        /// <summary>
         /// Creates a part from the loaded data, moving its vertices so the axle pivot becomes its local origin.
         /// A missing part is logged and becomes an empty node, so the rest of the cannon still draws.
         /// </summary>
-        /// <param name="parts">The parts loaded from Cannon.obj.</param>
+        /// <param name="parts">The parts loaded from the cannon model.</param>
         /// <param name="name">The part's object name.</param>
         /// <returns>The new part.</returns>
         private ModelPart CreatePart(Dictionary<string, MeshData> parts, string name)
         {
             if (!parts.TryGetValue(name, out MeshData? data))
             {
-                DebugText.Log($"Cannon.obj has no part named '{name}'", Color4.Red, 8f);
+                DebugText.Log($"{_root.Name} has no part named '{name}'", Color4.Red, 8f);
                 return new ModelPart(name);
             }
 
