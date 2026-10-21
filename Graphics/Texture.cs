@@ -27,8 +27,7 @@ namespace _3DDemoA2.Graphics
         /// </summary>
         /// <param name="filename">The texture file, relative to the Textures folder.</param>
         /// <param name="unit">The texture unit this texture always binds to (e.g. Material.NORMALMAPUNIT).</param>
-        /// <param name="pixelPerfect">
-        /// </param>
+        /// <param name="pixelPerfect">Whether to use pixel-perfect filtering (nearest) or trilinear filtering (LinearMipmapLinear).</param>
         public Texture(string filename, int unit = 0, bool pixelPerfect = false)
         {
             Unit = unit;
@@ -119,8 +118,8 @@ namespace _3DDemoA2.Graphics
             GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
 
             byte[] pixel = { red, green, blue, 255 };
-            GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgb, 1, 1, 0,
-                PixelFormat.Rgb, PixelType.UnsignedByte, pixel);
+            GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba, 1, 1, 0,
+                PixelFormat.Rgba, PixelType.UnsignedByte, pixel);
 
             GL.BindTexture(TextureTarget.Texture2D, 0);
         }
@@ -128,9 +127,7 @@ namespace _3DDemoA2.Graphics
 
         #region IGraphicsResources Functions
         /// <summary>
-        /// Binds the texture to a texture unit. The shader's sampler uniform must be set to the same unit number
-        /// (e.g. shader.SetInt("AlbedoMap", 0)). Separate units let a shader sample several textures at once,
-        /// such as a model texture on unit 0 and the skybox cube map on unit 1.
+        /// Binds the texture to a texture unit it is assigned to.
         /// </summary>
         public void Bind()
         {
@@ -139,7 +136,7 @@ namespace _3DDemoA2.Graphics
         }
 
         /// <summary>
-        /// Unbinds any 2D texture from the given texture unit.
+        /// Unbinds any 2D texture from the texture unit this texture is assigned to.
         /// </summary>
         public void Unbind()
         {

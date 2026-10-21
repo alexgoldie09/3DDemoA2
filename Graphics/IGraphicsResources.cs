@@ -13,13 +13,11 @@ namespace _3DDemoA2.Graphics
         /// <summary>
         /// Binds the graphics resource to the current OpenGL context.
         /// </summary>
-        /// <param name="unit"></param>
         public void Bind();
 
         /// <summary>
         /// Unbinds the graphics resource from the current OpenGL context.
         /// </summary>
-        /// <param name="unit"></param>
         public void Unbind();
 
         /// <summary>

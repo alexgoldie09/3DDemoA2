@@ -11,7 +11,7 @@ namespace _3DDemoA2.Graphics
         /// <summary>
         /// Gets the ID of the Vertex Array Object (VAO).
         /// </summary>
-        public int ID { get; set; }
+        public int ID { get; }
 
         /// <summary>
         /// Initializes a new instance of the VAO class and generates a Vertex Array Object (VAO) in OpenGL.

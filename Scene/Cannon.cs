@@ -191,7 +191,7 @@ namespace _3DDemoA2.Scene
         }
         #endregion
         
-        #region Public API
+        #region IRenderable Functions
         /// <summary>
         /// Draws the cannon. The shader is already bound, with the view, projection and lighting set.
         /// </summary>

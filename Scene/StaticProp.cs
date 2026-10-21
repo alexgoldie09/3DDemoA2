@@ -71,7 +71,7 @@ namespace _3DDemoA2.Scene
             };
         }
         
-        #region Public API
+        #region IRenderable Functions
         /// <summary>
         /// Draws the static prop. The shader is already bound, with the view, projection and lighting set.
         /// </summary>
