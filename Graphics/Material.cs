@@ -5,9 +5,9 @@ namespace _3DDemoA2.Graphics
     /// <summary>
     /// How a surface looks and reacts to light: optional albedo (colour), normal, metallic and roughness maps,
     /// plus a value for each.
-    /// Each value is multiplied by its map when the map is present, or used on its own when it isn't
-    /// (the same "factor x texture" convention the glTF format uses). So one atlas can be fully metal
-    /// on one part while another part, like the wheels, just uses plain values with no maps.
+    /// Each value is multiplied by its map (the same "factor x texture" convention the glTF format uses).
+    /// A missing map is replaced by a neutral 1x1 default texture, so the value is then used on its own.
+    /// So one atlas can be fully metal on one part while another part, like the wheels, just uses plain values.
     ///
     /// This is not physically based rendering: the values feed the existing Blinn-Phong lighting
     /// (see Model.frag), with roughness controlling the highlight and metallic tinting it.
@@ -21,6 +21,15 @@ namespace _3DDemoA2.Graphics
         public const int NORMALMAPUNIT = 1;
         public const int METALLICMAPUNIT = 2;
         public const int ROUGHNESSMAPUNIT = 3;
+        #endregion
+
+        #region Default Textures
+        // Bound in place of a missing map, so every sampler always has a texture (macOS warns about empty units).
+        // White leaves a value unchanged (value x 1); flat blue (128, 128, 255) unpacks to about (0, 0, 1),
+        // a normal pointing straight out of the surface, so the mesh normal is left as it is.
+        // Created on first use (they need the OpenGL context), shared by every material, freed by DeleteDefaults.
+        private static Texture? _whiteTexture;
+        private static Texture? _flatNormalTexture;
         #endregion
 
         #region Public Fields
@@ -81,21 +90,55 @@ namespace _3DDemoA2.Graphics
         /// <param name="shader">The bound model shader.</param>
         public void Apply(ShaderProgram shader)
         {
-            AlbedoMap?.Bind(ALBEDOMAPUNIT);
-            NormalMap?.Bind(NORMALMAPUNIT);
-            MetallicMap?.Bind(METALLICMAPUNIT);
-            RoughnessMap?.Bind(ROUGHNESSMAPUNIT);
+            if (_whiteTexture == null)
+                _whiteTexture = new Texture(255, 255, 255);
+            if (_flatNormalTexture == null)
+                _flatNormalTexture = new Texture(128, 128, 255);
 
-            shader.SetInt("useAlbedoMap", AlbedoMap != null ? 1 : 0);
-            shader.SetInt("useNormalMap", NormalMap != null ? 1 : 0);
-            shader.SetInt("useMetallicMap", MetallicMap != null ? 1 : 0);
-            shader.SetInt("useRoughnessMap", RoughnessMap != null ? 1 : 0);
+            BindOrDefault(AlbedoMap, _whiteTexture, ALBEDOMAPUNIT);
+            BindOrDefault(NormalMap, _flatNormalTexture, NORMALMAPUNIT);
+            BindOrDefault(MetallicMap, _whiteTexture, METALLICMAPUNIT);
+            BindOrDefault(RoughnessMap, _whiteTexture, ROUGHNESSMAPUNIT);
 
             shader.SetVector3("albedoFactor", Colour);
             shader.SetFloat("metallicFactor", Metallic);
             shader.SetFloat("roughnessFactor", Roughness);
             shader.SetFloat("normalStrength", NormalStrength);
             shader.SetFloat("detailScale", DetailScale);
+        }
+
+        /// <summary>
+        /// Frees the shared default textures. Call once when closing, after the scene is deleted.
+        /// </summary>
+        public static void DeleteDefaults()
+        {
+            if (_whiteTexture != null)
+            {
+                _whiteTexture.Delete();
+                _whiteTexture = null;
+            }
+
+            if (_flatNormalTexture != null)
+            {
+                _flatNormalTexture.Delete();
+                _flatNormalTexture = null;
+            }
+        }
+        #endregion
+
+        #region Helper Methods
+        /// <summary>
+        /// Binds a map to its texture unit, or the default texture when the material has no such map.
+        /// </summary>
+        /// <param name="map">The material's map, or null.</param>
+        /// <param name="fallback">The neutral default to bind instead.</param>
+        /// <param name="unit">The texture unit.</param>
+        private static void BindOrDefault(Texture? map, Texture fallback, int unit)
+        {
+            if (map != null)
+                map.Bind(unit);
+            else
+                fallback.Bind(unit);
         }
         #endregion
     }

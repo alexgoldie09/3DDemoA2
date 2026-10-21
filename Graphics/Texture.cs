@@ -16,6 +16,7 @@ namespace _3DDemoA2.Graphics
         /// </summary>
         public int ID { get; set; }
         
+        #region Constructors
         /// <summary>
         /// Constructor that initialises a new instance of the Texture class and loads a texture from the Textures folder.
         /// </summary>
@@ -88,6 +89,36 @@ namespace _3DDemoA2.Graphics
             GL.BindTexture(TextureTarget.Texture2D, 0);
         }
         
+        /// <summary>
+        /// Constructor that creates a 1x1 texture of a single colour, without loading a file.
+        /// Used for the neutral "no map" textures in Material, so every sampler always has a texture bound.
+        /// </summary>
+        /// <param name="red">Red, 0 to 255.</param>
+        /// <param name="green">Green, 0 to 255.</param>
+        /// <param name="blue">Blue, 0 to 255.</param>
+        /// <param name="alpha">Alpha, 0 to 255.</param>
+        public Texture(byte red, byte green, byte blue, byte alpha = 255)
+        {
+            // Uploads always happen on unit 0 (see the file constructor)
+            GL.ActiveTexture(TextureUnit.Texture0);
+
+            ID = GL.GenTexture();
+            GL.BindTexture(TextureTarget.Texture2D, ID);
+
+            // A single pixel: repeat so every UV reads it, nearest filtering and no mipmaps needed
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.Repeat);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.Repeat);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
+
+            byte[] pixel = { red, green, blue, alpha };
+            GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba, 1, 1, 0,
+                PixelFormat.Rgba, PixelType.UnsignedByte, pixel);
+
+            GL.BindTexture(TextureTarget.Texture2D, 0);
+        }
+        #endregion
+
         #region IGraphicsResources Functions
         /// <summary>
         /// Binds the texture to a texture unit. The shader's sampler uniform must be set to the same unit number

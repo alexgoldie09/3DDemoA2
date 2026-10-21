@@ -130,6 +130,7 @@ namespace _3DDemoA2
             foreach (var renderable in _scene)
                 renderable.Delete();
             _scene.Clear();
+            Material.DeleteDefaults();
             _modelShader?.Delete();
             // Shutdown the debug text system
             DebugText.Shutdown();

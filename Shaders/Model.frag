@@ -14,11 +14,8 @@ uniform sampler2D NormalMap; // Tangent-space normal map, OpenGL convention (uni
 uniform sampler2D MetallicMap; // Greyscale, white = metal (unit 2)
 uniform sampler2D RoughnessMap; // Greyscale, white = rough (unit 3)
 
-// Material values (set per mesh by Material.Apply): each multiplies its map, or is used alone without one
-uniform int useAlbedoMap; // 1 = multiply albedoFactor by the albedo map
-uniform int useNormalMap; // 1 = bend the normal with the normal map
-uniform int useMetallicMap; // 1 = multiply metallicFactor by the metallic map
-uniform int useRoughnessMap; // 1 = multiply roughnessFactor by the roughness map
+// Material values (set per mesh by Material.Apply): each multiplies its map.
+// A material without a map gets a neutral default instead (white, or a flat normal), so the value is used alone.
 uniform vec3 albedoFactor; // colour tint (white = map unchanged)
 uniform float metallicFactor; // 0 = non-metal, 1 = metal
 uniform float roughnessFactor; // 0 = mirror smooth, 1 = fully matte
@@ -50,28 +47,26 @@ vec3 SampleEnvironment(vec3 direction)
 
 void main()
 {
-    // --- Material values: factor x map (or the factor alone when there's no map) ---
+    // --- Material values: factor x map ---
     // The albedo uses the model's own UVs; the tiling detail maps repeat detailScale times across them
-    vec3 albedo = albedoFactor * (useAlbedoMap == 1 ? texture(AlbedoMap, TexCoord).rgb : vec3(1.0));
+    vec3 albedo = albedoFactor * texture(AlbedoMap, TexCoord).rgb;
     vec2 detailUV = TexCoord * detailScale;
-    float metallic = metallicFactor * (useMetallicMap == 1 ? texture(MetallicMap, detailUV).r : 1.0);
-    float roughness = roughnessFactor * (useRoughnessMap == 1 ? texture(RoughnessMap, detailUV).r : 1.0);
+    float metallic = metallicFactor * texture(MetallicMap, detailUV).r;
+    float roughness = roughnessFactor * texture(RoughnessMap, detailUV).r;
 
     // --- Surface normal ---
+    // Without a normal map, the flat default unpacks to about (0, 0, 1), which leaves the mesh normal unchanged
     vec3 N = normalize(WorldNormal); // re-normalise: interpolation shortens it
-    if (useNormalMap == 1)
-    {
-        // TBN: tangent, bitangent and normal as the axes of the surface. The tangent is straightened to be exactly
-        // perpendicular to the normal (Gram-Schmidt), and the bitangent's sign keeps mirrored UVs the right way round.
-        vec3 T = normalize(WorldTangent - dot(WorldTangent, N) * N);
-        float handedness = dot(cross(N, T), WorldBitangent) < 0.0 ? -1.0 : 1.0;
-        vec3 B = cross(N, T) * handedness;
+    // TBN: tangent, bitangent and normal as the axes of the surface. The tangent is straightened to be exactly
+    // perpendicular to the normal (Gram-Schmidt), and the bitangent's sign keeps mirrored UVs the right way round.
+    vec3 T = normalize(WorldTangent - dot(WorldTangent, N) * N);
+    float handedness = dot(cross(N, T), WorldBitangent) < 0.0 ? -1.0 : 1.0;
+    vec3 B = cross(N, T) * handedness;
 
-        // The map stores directions as colours (0..1), so unpack to -1..1; scaling X/Y sets how strongly it bends
-        vec3 mapped = texture(NormalMap, detailUV).rgb * 2.0 - 1.0;
-        mapped.xy *= normalStrength;
-        N = normalize(mat3(T, B, N) * mapped);
-    }
+    // The map stores directions as colours (0..1), so unpack to -1..1; scaling X/Y sets how strongly it bends
+    vec3 mapped = texture(NormalMap, detailUV).rgb * 2.0 - 1.0;
+    mapped.xy *= normalStrength;
+    N = normalize(mat3(T, B, N) * mapped);
 
     if (DebugView == 1)
     // Normals: Map each normal component from -1..1 to 0..1: +X = red, +Y (up) = green, +Z = blue

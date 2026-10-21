@@ -88,7 +88,12 @@ namespace _3DDemoA2.Scene
         public void Render(ShaderProgram shader, Matrix4 parentWorld, Material? parentMaterial = null)
         {
             Matrix4 world = LocalMatrix * parentWorld;
-            Material material = Material ?? parentMaterial ?? DefaultMaterial;
+            // This part's own material, otherwise the parent's, otherwise the default
+            Material material = DefaultMaterial;
+            if (Material != null)
+                material = Material;
+            else if (parentMaterial != null)
+                material = parentMaterial;
 
             if (Mesh != null)
             {
