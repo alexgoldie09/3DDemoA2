@@ -7,12 +7,12 @@ namespace _3DDemoA2.Graphics
     /// Represents a Vertex Buffer Object (VBO) in OpenGL,
     /// which is used to store vertex data on the GPU for rendering.
     /// </summary>
-    internal class VBO
+    internal class VBO : IGraphicsResources
     {
         /// <summary>
         /// Gets the ID of the Vertex Buffer Object (VBO).
         /// </summary>
-        public int ID { get; private set; }
+        public int ID { get; set; }
 
         /// <summary>
         /// Constructor that initialises a new instance of the VBO class with Vector3 data.
@@ -40,15 +40,15 @@ namespace _3DDemoA2.Graphics
             GL.BufferData(BufferTarget.ArrayBuffer, data.Count * Vector2.SizeInBytes, data.ToArray(), BufferUsageHint.StaticDraw);
         }
         
-        #region Public API
+        #region IGraphicsResources Functions
         /// <summary>
         /// Binds the Vertex Buffer Object (VBO) to the current OpenGL context.
         /// </summary>
-        public void Bind() => GL.BindBuffer(BufferTarget.ArrayBuffer, ID);
+        public void Bind(int unit = 0) => GL.BindBuffer(BufferTarget.ArrayBuffer, ID);
         /// <summary>
         /// Unbinds the Vertex Buffer Object (VBO) from the current OpenGL context.
         /// </summary>
-        public void Unbind() => GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
+        public void Unbind(int unit = 0) => GL.BindBuffer(BufferTarget.ArrayBuffer, unit);
         /// <summary>
         /// Deletes the Vertex Buffer Object (VBO) from the GPU.
         /// </summary>

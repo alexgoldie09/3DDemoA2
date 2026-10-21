@@ -9,12 +9,12 @@ namespace _3DDemoA2.Graphics
     /// Represents a shader program in OpenGL,
     /// which is used to manage and link vertex and fragment shaders for rendering.
     /// </summary>
-    internal class ShaderProgram
+    internal class ShaderProgram : IGraphicsResources
     {
         /// <summary>
         /// Gets the ID of the shader program.
         /// </summary>
-        public int ID { get; private set; }
+        public int ID { get; set; }
         
         /// <summary>
         /// A dictionary to cache uniform locations for efficient access.
@@ -113,15 +113,17 @@ namespace _3DDemoA2.Graphics
         /// <param name="name">The name of the uniform variable in the shader.</param>
         /// <param name="value">The integer value to set.</param>
         public void SetInt(string name, int value) => GL.Uniform1(GetLocation(name), value);
-
+        #endregion
+        
+        #region IGraphicsResources Functions
         /// <summary>
         /// Binds the shader program for use in rendering.
         /// </summary>
-        public void Bind() => GL.UseProgram(ID);
+        public void Bind(int unit = 0) => GL.UseProgram(ID);
         /// <summary>
         /// Unbinds the shader program, reverting to the default OpenGL state.
         /// </summary>
-        public void Unbind() => GL.UseProgram(0);
+        public void Unbind(int unit = 0) => GL.UseProgram(unit);
         /// <summary>
         /// Deletes the shader program from the GPU, freeing up resources.
         /// </summary>

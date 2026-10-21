@@ -9,12 +9,12 @@ namespace _3DDemoA2.Graphics
     /// <summary>
     /// Represents a 2D texture in OpenGL, allowing for loading, binding, and managing texture resources.
     /// </summary>
-    internal class Texture
+    internal class Texture : IGraphicsResources
     {
         /// <summary>
         /// Gets the ID of the texture object in OpenGL.
         /// </summary>
-        public int ID { get; private set; }
+        public int ID { get; set; }
         
         /// <summary>
         /// Constructor that initialises a new instance of the Texture class and loads a texture from the Textures folder.
@@ -88,7 +88,7 @@ namespace _3DDemoA2.Graphics
             GL.BindTexture(TextureTarget.Texture2D, 0);
         }
         
-        #region Public API
+        #region IGraphicsResources Functions
         /// <summary>
         /// Binds the texture to a texture unit. The shader's sampler uniform must be set to the same unit number
         /// (e.g. shader.SetInt("Texture0", 0)). Separate units let a shader sample several textures at once,

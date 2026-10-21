@@ -6,12 +6,12 @@ namespace _3DDemoA2.Graphics
     /// Represents a Vertex Array Object (VAO) in OpenGL,
     /// which encapsulates the state needed to specify vertex data for rendering.
     /// </summary>
-    internal class VAO
+    internal class VAO : IGraphicsResources
     {
         /// <summary>
         /// Gets the ID of the Vertex Array Object (VAO).
         /// </summary>
-        public int ID { get; private set; }
+        public int ID { get; set; }
 
         /// <summary>
         /// Initializes a new instance of the VAO class and generates a Vertex Array Object (VAO) in OpenGL.
@@ -39,15 +39,17 @@ namespace _3DDemoA2.Graphics
             GL.EnableVertexAttribArray(location);
             Unbind();
         }
+        #endregion
 
+        #region IGraphicsResources Functions
         /// <summary>
         /// Binds the Vertex Array Object (VAO) to the current OpenGL context.
         /// </summary>
-        public void Bind() => GL.BindVertexArray(ID);
+        public void Bind(int unit = 0) => GL.BindVertexArray(ID);
         /// <summary>
         /// Unbinds the Vertex Array Object (VAO) from the current OpenGL context.
         /// </summary>
-        public void Unbind() => GL.BindVertexArray(0);
+        public void Unbind(int unit = 0) => GL.BindVertexArray(unit);
         /// <summary>
         /// Deletes the Vertex Array Object (VAO) from the GPU.
         /// </summary>

@@ -5,12 +5,12 @@ namespace _3DDemoA2.Graphics
     /// <summary>
     /// Represents an Index Buffer Object (IBO) in OpenGL, which is used to store index data for rendering.
     /// </summary>
-    internal class IBO
+    internal class IBO : IGraphicsResources
     {
         /// <summary>
         /// Gets the ID of the Index Buffer Object (IBO).
         /// </summary>
-        public int ID { get; private set; }
+        public int ID { get; set; }
 
         /// <summary>
         /// Constructor that intialises a new instance of the IBO class with the specified index data.
@@ -25,15 +25,15 @@ namespace _3DDemoA2.Graphics
                 BufferUsageHint.StaticDraw);
         }
 
-        #region Public API
+        #region IGraphicsResources Functions
         /// <summary>
         /// Binds the Index Buffer Object (IBO) to the current OpenGL context.
         /// </summary>
-        public void Bind() => GL.BindBuffer(BufferTarget.ElementArrayBuffer, ID);
+        public void Bind(int unit = 0) => GL.BindBuffer(BufferTarget.ElementArrayBuffer, ID);
         /// <summary>
         /// Unbinds the Index Buffer Object (IBO) from the current OpenGL context.
         /// </summary>
-        public void Unbind() => GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
+        public void Unbind(int unit = 0) => GL.BindBuffer(BufferTarget.ElementArrayBuffer, unit);
         /// <summary>
         /// Deletes the Index Buffer Object (IBO) from the GPU.
         /// </summary>
