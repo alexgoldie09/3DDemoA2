@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
@@ -43,6 +44,17 @@ namespace _3DDemoA2
         
         // Lighting toggle: off shows the raw texture colour, for comparing lit vs unlit
         private bool _useLighting;
+
+        // Frame timing readout, averaged over half a second so the numbers are readable
+        // CPU render time is how long this program spends issuing a frame's work, which is the part code changes affect.
+        private const double TIMINGSAMPLESECONDS = 0.5;
+        private readonly Stopwatch _renderTimer = new();
+        private double _sampleElapsed;
+        private double _sampleFrameTime;
+        private double _sampleRenderTime;
+        private int _sampleFrames;
+        private double _averageFrameMs;
+        private double _averageRenderMs;
 
         // Camera vars
         private Camera? _camera;
@@ -104,10 +116,32 @@ namespace _3DDemoA2
             // Create the shader program used for every textured model
             _modelShader = new ShaderProgram("Model.vert", "Model.frag");
 
+            // --- Uniforms that never change ---
+            // Uniforms belong to the program and keep their value until changed, so values that stay the same
+            // for the whole run are uploaded once here instead of every frame.
+            _modelShader.Bind();
+
+            // Lighting: a single directional light (the sun) and ambient light
+            _modelShader.SetVector3("lightDir", new Vector3(-1.4f, -1f, -0.3f)); // sun from above, move a bit to one side
+            _modelShader.SetVector3("lightColor", new Vector3(1f, 0.97f, 0.9f)); // warm daylight
+            _modelShader.SetFloat("ambientStrength", 0.5f);
+
+            // Environment for reflections: a stand-in for the skybox, a gradient from sky (up) through a
+            // pale horizon to grass (down). The sky matches the clear colour so metals reflect the background.
+            _modelShader.SetVector3("skyColour", new Vector3(Color4.SkyBlue.R, Color4.SkyBlue.G, Color4.SkyBlue.B));
+            _modelShader.SetVector3("horizonColour", new Vector3(0.85f, 0.9f, 0.95f));
+            _modelShader.SetVector3("groundColour", new Vector3(0.3f, 0.38f, 0.22f));
+
+            // Texture units: each material map has its own unit (albedo 0, normal 1, metallic 2, roughness 3)
+            _modelShader.SetInt("AlbedoMap", Material.ALBEDOMAPUNIT);
+            _modelShader.SetInt("NormalMap", Material.NORMALMAPUNIT);
+            _modelShader.SetInt("MetallicMap", Material.METALLICMAPUNIT);
+            _modelShader.SetInt("RoughnessMap", Material.ROUGHNESSMAPUNIT);
+
             // Load the scene. All three models were exported already sitting on y = 0,
             // so only sideways offsets are needed to place them on the island's grass without overlapping.
             // Each model names its four texture files (null = no map: the material's neutral default is used).
-            _scene.Add(new StaticProp("Island", "Island.obj", Vector3.Zero, // grass top at y = 0
+            _scene.Add(new StaticProp("Island", "Island.obj", Vector3.Zero,
                 colorMapFile: "IslandColorTexture.png",
                 normalMapFile: null,
                 metallicMapFile: null,
@@ -131,6 +165,9 @@ namespace _3DDemoA2
             // --- Camera & input ---
             // Create the camera with the specified width, height, and initial position
             _camera = new Camera(_width, _height, _initialCameraPosition);
+
+            // Upload the camera's projection matrix to the model shader, which depends on the window size
+            UploadProjection();
 
             // Grab and hide the cursor for mouse-look
             CursorState = CursorState.Grabbed;
@@ -165,8 +202,9 @@ namespace _3DDemoA2
             _width = e.Width;
             _height = e.Height;
 
-            // Keep the camera's aspect ratio in sync with the window
+            // Keep the camera's aspect ratio in sync with the window, and re-upload the projection that depends on it
             _camera?.SetScreenSize(_width, _height);
+            UploadProjection();
 
             // Change the title of the window
             Title = $"{_title} - {_width}x{_height}";
@@ -190,6 +228,9 @@ namespace _3DDemoA2
         /// </summary>
         protected override void OnRenderFrame(FrameEventArgs args)
         {
+            // Time the work this frame issues (stopped before SwapBuffers, which is where VSync waits)
+            _renderTimer.Restart();
+
             // Clear the color buffer and depth buffer
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
@@ -198,9 +239,10 @@ namespace _3DDemoA2
                 // Bind the shader first: uniform uploads apply to the currently bound program
                 _modelShader.Bind();
 
-                // View, projection and debug view matrices: shared by every object, so set them once per frame
+                // Only what can change between frames is uploaded here: the camera and the debug toggles
+                // (the light, environment, texture units and projection are set in OnLoad / OnResize)
                 _modelShader.SetMatrix4("view", _camera.GetViewMatrix());
-                _modelShader.SetMatrix4("projection", _camera.GetProjectionMatrix());
+                _modelShader.SetVector3("cameraPos", _camera.Position);
                 _modelShader.SetInt("DebugView", _debugView);
                 _modelShader.SetInt("UseLighting", _useLighting ? 1 : 0);
                 
@@ -209,25 +251,10 @@ namespace _3DDemoA2
                 if (_debugView == 3)
                     GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Line);
                 
-                // Lighting: a single directional light (the sun) and ambient light
-                _modelShader.SetVector3("lightDir", new Vector3(-1.4f, -1f, -0.3f)); // sun from above, move a bit to one side
-                _modelShader.SetVector3("lightColor", new Vector3(1f, 0.97f, 0.9f)); // warm daylight
-                _modelShader.SetFloat("ambientStrength", 0.5f);
-                _modelShader.SetVector3("cameraPos", _camera.Position);
-
-                // Environment for reflections: a stand-in for the skybox, a gradient from sky (up) through a
-                // pale horizon to grass (down). The sky matches the clear colour so metals reflect the background.
-                _modelShader.SetVector3("skyColour", new Vector3(Color4.SkyBlue.R, Color4.SkyBlue.G, Color4.SkyBlue.B));
-                _modelShader.SetVector3("horizonColour", new Vector3(0.85f, 0.9f, 0.95f));
-                _modelShader.SetVector3("groundColour", new Vector3(0.3f, 0.38f, 0.22f));
-
-                // Texture units: each material map has its own unit (albedo 0, normal 1, metallic 2, roughness 3)
-                _modelShader.SetInt("AlbedoMap", Material.ALBEDOMAPUNIT);
-                _modelShader.SetInt("NormalMap", Material.NORMALMAPUNIT);
-                _modelShader.SetInt("MetallicMap", Material.METALLICMAPUNIT);
-                _modelShader.SetInt("RoughnessMap", Material.ROUGHNESSMAPUNIT);
-
                 // --- Scene ---
+                // Reset the last applied material so every object applies its own materials (binding their maps)
+                Material.ResetLastApplied();
+
                 // Each object applies its own materials (binding their maps) and uploads its own model matrices
                 foreach (var renderable in _scene)
                     renderable.Render(_modelShader);
@@ -238,6 +265,10 @@ namespace _3DDemoA2
 
             // Render the debug text on top of the 3D scene
             DebugText.Render();
+
+            // Stop timing before the swap, and add this frame to the averages
+            _renderTimer.Stop();
+            UpdateTimingAverages(args.Time, _renderTimer.Elapsed.TotalMilliseconds);
 
             // Swap the front and back buffers to display the rendered frame
             Context.SwapBuffers();
@@ -305,7 +336,9 @@ namespace _3DDemoA2
                 _debugView = (_debugView + 1) % DebugViewNames.Length;
 
             // Debug readouts (keyed, so they update in place instead of stacking)
-            DebugText.Log($"FPS: {1.0 / deltaTime:0}", Color4.White, 0.5f, key: 1);
+            DebugText.Log($"Frame: {_averageFrameMs:0.0} ms ({1000.0 / Math.Max(_averageFrameMs, 0.001):0} FPS), " +
+                          $"CPU render: {_averageRenderMs:0.00} ms",
+                Color4.White, 0.5f, key: 1);
             DebugText.Log($"Press C for Backface Culling: {(_useBackfaceCulling ? "ON" : "OFF")}", Color4.Yellow, 0.5f, key: 2);
             DebugText.Log($"Press V for Debug View: {DebugViewNames[_debugView]}", Color4.MediumVioletRed, 0.5f, key: 5);
             DebugText.Log($"Press Tab to Toggle Lighting", Color4.DarkSlateBlue, 0.5f, key: 3);
@@ -315,6 +348,45 @@ namespace _3DDemoA2
             if (_cannon != null)
                 DebugText.Log($"Barrel: {_cannon.Elevation:0} deg, Heading: {_cannon.Heading:0} deg",
                     Color4.DarkGreen, 0.5f, key: 8);
+        }
+        #endregion
+
+        #region Helper Methods
+        /// <summary>
+        /// Uploads the camera's projection matrix to the model shader (on load and whenever the window resizes).
+        /// </summary>
+        private void UploadProjection()
+        {
+            if (_modelShader == null || _camera == null)
+                return;
+
+            _modelShader.Bind();
+            _modelShader.SetMatrix4("projection", _camera.GetProjectionMatrix());
+        }
+
+        /// <summary>
+        /// Adds one frame's timings to the running totals, and every half second turns them into averages
+        /// (a single frame's numbers jump around too much to read).
+        /// </summary>
+        /// <param name="frameSeconds">Time since the previous frame, in seconds.</param>
+        /// <param name="renderMilliseconds">CPU time spent issuing this frame, in milliseconds.</param>
+        private void UpdateTimingAverages(double frameSeconds, double renderMilliseconds)
+        {
+            _sampleElapsed += frameSeconds;
+            _sampleFrameTime += frameSeconds * 1000.0;
+            _sampleRenderTime += renderMilliseconds;
+            _sampleFrames++;
+
+            if (_sampleElapsed < TIMINGSAMPLESECONDS)
+                return;
+
+            _averageFrameMs = _sampleFrameTime / _sampleFrames;
+            _averageRenderMs = _sampleRenderTime / _sampleFrames;
+
+            _sampleElapsed = 0;
+            _sampleFrameTime = 0;
+            _sampleRenderTime = 0;
+            _sampleFrames = 0;
         }
         #endregion
     }

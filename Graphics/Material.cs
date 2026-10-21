@@ -32,6 +32,22 @@ namespace _3DDemoA2.Graphics
         private static Texture? _flatNormalTexture;
         #endregion
 
+        #region Redundant State Tracking
+        // The material applied most recently. Its maps are still bound and its values still uploaded,
+        // so applying it again straight away would only repeat the same OpenGL calls.
+        private static Material? _lastApplied;
+
+        /// <summary>
+        /// How many materials were actually applied (bound and uploaded) since the last reset.
+        /// </summary>
+        public static int AppliedCount { get; private set; }
+
+        /// <summary>
+        /// How many applies were skipped since the last reset, because that material was already current.
+        /// </summary>
+        public static int SkippedCount { get; private set; }
+        #endregion
+
         #region Public Fields
         /// <summary>
         /// The surface colour (albedo) map, e.g. a model's baked atlas, or null to use Colour alone.
@@ -85,11 +101,23 @@ namespace _3DDemoA2.Graphics
 
         #region Public API
         /// <summary>
-        /// Binds this material's maps to their texture units and uploads its values.
+        /// Binds this material's maps to their texture units and uploads its values,
+        /// unless it is already the current material (then nothing needs to change).
+        /// Note: changing a material's values between two draws in the same frame won't be picked up
+        /// for the second draw; call ResetLastApplied first if that's ever needed.
         /// </summary>
         /// <param name="shader">The bound model shader.</param>
         public void Apply(ShaderProgram shader)
         {
+            if (_lastApplied == this)
+            {
+                SkippedCount++;
+                return;
+            }
+
+            _lastApplied = this;
+            AppliedCount++;
+
             if (_whiteTexture == null)
                 _whiteTexture = new Texture(255, 255, 255);
             if (_flatNormalTexture == null)
@@ -108,10 +136,23 @@ namespace _3DDemoA2.Graphics
         }
 
         /// <summary>
+        /// Forgets the current material and resets the counts. Call at the start of each frame's scene drawing:
+        /// other drawing in between (e.g. DebugText binding its font to unit 0) can replace what was bound.
+        /// </summary>
+        public static void ResetLastApplied()
+        {
+            _lastApplied = null;
+            AppliedCount = 0;
+            SkippedCount = 0;
+        }
+
+        /// <summary>
         /// Frees the shared default textures. Call once when closing, after the scene is deleted.
         /// </summary>
         public static void DeleteDefaults()
         {
+            _lastApplied = null;
+
             if (_whiteTexture != null)
             {
                 _whiteTexture.Delete();

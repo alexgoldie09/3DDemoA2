@@ -97,8 +97,10 @@ namespace _3DDemoA2.Scene
             _root = new ModelPart(name) { Position = position };
             ModelPart mount = _root.AddChild(CreatePart(parts, "Mount"));
             mount.Position = AxlePivot;
-            _wheels = mount.AddChild(CreatePart(parts, "Wheels"));
+            // Children draw in the order they are added: the Barrel goes straight after the Mount because they share
+            // the metal material (so it is applied once for both), then the Wheels with their own rubber material
             _barrel = mount.AddChild(CreatePart(parts, "Barrel"));
+            _wheels = mount.AddChild(CreatePart(parts, "Wheels"));
 
             // --- Materials ---
             // Scratched metal for the whole cannon, set on the root so every part inherits it.

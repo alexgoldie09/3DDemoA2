@@ -97,8 +97,8 @@ namespace _3DDemoA2.Scene
 
             if (Mesh != null)
             {
-                // Uniforms keep their value between draws, so every mesh applies its material
-                // rather than inheriting whatever the previous object left behind
+                // Uniforms keep their value between draws, so every mesh applies its material rather than
+                // inheriting whatever the previous object left behind (Apply skips itself if it's already current)
                 material.Apply(shader);
                 shader.SetMatrix4("model", world);
                 shader.SetMatrix3("normalMatrix", CreateNormalMatrix(world));
