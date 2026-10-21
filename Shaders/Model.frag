@@ -23,7 +23,7 @@ uniform float normalStrength; // 0 = flat, 1 = normal map as authored
 uniform float detailScale; // how many times the detail maps repeat across the UVs
 
 // Debug and lighting
-uniform int DebugView; // 0 texture, 1 normals, 2 UVs, 3 wireframe, 4 metallic, 5 roughness
+uniform int DebugView; // one of the DEBUGVIEW_ values, #defined from the C# DebugView enum (see DebugView.cs)
 uniform int UseLighting; // 1 = lit, 0 = raw texture colour
 uniform vec3 lightDir; // direction the light travels, in world space (sunlight pointing down)
 uniform vec3 lightColor; // colour/intensity of the light
@@ -68,19 +68,19 @@ void main()
     mapped.xy *= normalStrength;
     N = normalize(mat3(T, B, N) * mapped);
 
-    if (DebugView == 1)
+    if (DebugView == DEBUGVIEW_NORMALS)
     // Normals: Map each normal component from -1..1 to 0..1: +X = red, +Y (up) = green, +Z = blue
     FragColor = vec4(normalize(WorldNormal) * 0.5 + 0.5, 1.0);
-    else if (DebugView == 2)
+    else if (DebugView == DEBUGVIEW_UVS)
     // UVs: U = red, V = green: black at (0, 0), yellow at (1, 1)
     FragColor = vec4(TexCoord, 0.0, 1.0);
-    else if (DebugView == 3)
+    else if (DebugView == DEBUGVIEW_WIREFRAME)
     // Wireframe: Game switches to line rasterisation, so only edges reach here; draw them in one solid colour
     FragColor = vec4(1.0, 1.0, 0.0, 1.0);
-    else if (DebugView == 4)
+    else if (DebugView == DEBUGVIEW_METALLIC)
     // Metallic: white = metal, black = non-metal
     FragColor = vec4(vec3(metallic), 1.0);
-    else if (DebugView == 5)
+    else if (DebugView == DEBUGVIEW_ROUGHNESS)
     // Roughness: white = rough, black = smooth
     FragColor = vec4(vec3(roughness), 1.0);
     else if (UseLighting == 0)

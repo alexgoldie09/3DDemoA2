@@ -33,7 +33,7 @@ namespace _3DDemoA2.Graphics
             
             // Create vertex shader
             var vertexShader = GL.CreateShader(ShaderType.VertexShader);
-            GL.ShaderSource(vertexShader, LoadShaderSource(vertexShaderFilepath));
+            GL.ShaderSource(vertexShader, InsertDefines(LoadShaderSource(vertexShaderFilepath)));
             GL.CompileShader(vertexShader);
             GL.GetShader(vertexShader, ShaderParameter.CompileStatus, out int vStatus);
             if (vStatus != (int)All.True)
@@ -44,7 +44,7 @@ namespace _3DDemoA2.Graphics
             
             // Create fragment shader
             var fragmentShader = GL.CreateShader(ShaderType.FragmentShader);
-            GL.ShaderSource(fragmentShader, LoadShaderSource(fragmentShaderFilePath));
+            GL.ShaderSource(fragmentShader, InsertDefines(LoadShaderSource(fragmentShaderFilePath)));
             GL.CompileShader(fragmentShader);
             GL.GetShader(fragmentShader, ShaderParameter.CompileStatus, out int fStatus);
             if (fStatus != (int)All.True)
@@ -172,6 +172,36 @@ namespace _3DDemoA2.Graphics
                 DebugText.Log($"Shader '{fileName}' could not be read (see console)", Color4.Red, 6f);
                 return string.Empty;
             }
+        }
+
+        /// <summary>
+        /// Builds one #define per DebugView value, e.g. "#define DEBUGVIEW_WIREFRAME 3",
+        /// so the shaders use the same values as the C# enum without repeating them.
+        /// </summary>
+        /// <returns>The #define lines, one per value.</returns>
+        private static string BuildDefines()
+        {
+            string defines = "";
+            foreach (DebugView view in Enum.GetValues<DebugView>())
+                defines += $"#define DEBUGVIEW_{view.ToString().ToUpperInvariant()} {(int)view}\n";
+            return defines;
+        }
+
+        /// <summary>
+        /// Inserts the #defines straight after the #version line, which GLSL requires to be first.
+        /// Note: this shifts the line numbers in shader compile errors down by the number of defines.
+        /// </summary>
+        /// <param name="source">The shader source, starting with its #version line.</param>
+        /// <returns>The source with the defines added.</returns>
+        private static string InsertDefines(string source)
+        {
+            int endOfVersionLine = source.IndexOf('\n');
+
+            // No line break means an empty (unreadable) or one-line file; leave it for the compiler to report
+            if (endOfVersionLine == -1)
+                return source;
+
+            return source.Insert(endOfVersionLine + 1, BuildDefines());
         }
         #endregion
     }

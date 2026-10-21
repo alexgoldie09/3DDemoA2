@@ -36,9 +36,7 @@ namespace _3DDemoA2
         // minus about 1.6 m so the cannon's furthest point (barrel tip / wheel) stays on the grass
         private const float CANNONROLLLIMIT = 6.9f;
 
-        // Debug view: what the model shader outputs to the screen, for checking normals, UVs, wireframe and the material maps.
-        // Must be in the same order as the DebugView values in Model.frag
-        private enum DebugView { Texture, Normals, UVs, Wireframe, Metallic, Roughness }
+        // Debug view: what the model shader outputs to the screen (see DebugView.cs, shared with Model.frag)
         private static readonly int DebugViewCount = Enum.GetValues<DebugView>().Length;
         private DebugView _debugView;
         
