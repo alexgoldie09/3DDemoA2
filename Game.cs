@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
@@ -46,16 +45,8 @@ namespace _3DDemoA2
         // Lighting toggle: off shows the raw texture colour, for comparing lit vs unlit
         private bool _useLighting;
 
-        // Frame timing readout, averaged over half a second so the numbers are readable
-        // CPU render time is how long this program spends issuing a frame's work, which is the part code changes affect.
-        private const double TIMINGSAMPLESECONDS = 0.5;
-        private readonly Stopwatch _renderTimer = new();
-        private double _sampleElapsed;
-        private double _sampleFrameTime;
-        private double _sampleRenderTime;
-        private int _sampleFrames;
-        private double _averageFrameMs;
-        private double _averageRenderMs;
+        // Frame timing readout (frame time and CPU render time, see FrameTimer.cs)
+        private readonly FrameTimer _frameTimer = new();
 
         // Camera vars
         private Camera? _camera;
@@ -233,7 +224,7 @@ namespace _3DDemoA2
         protected override void OnRenderFrame(FrameEventArgs args)
         {
             // Time the work this frame issues (stopped before SwapBuffers, which is where VSync waits)
-            _renderTimer.Restart();
+            _frameTimer.BeginFrame();
 
             // Clear the color buffer and depth buffer
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
@@ -277,8 +268,7 @@ namespace _3DDemoA2
             DebugText.Render();
 
             // Stop timing before the swap, and add this frame to the averages
-            _renderTimer.Stop();
-            UpdateTimingAverages(args.Time, _renderTimer.Elapsed.TotalMilliseconds);
+            _frameTimer.EndFrame(args.Time);
 
             // Swap the front and back buffers to display the rendered frame
             Context.SwapBuffers();
@@ -297,6 +287,7 @@ namespace _3DDemoA2
 
             base.OnUpdateFrame(args);
 
+            // Seconds since the last update, measured by OpenTK's GameWindow (keeps movement frame-rate independent)
             float deltaTime = (float)args.Time;
 
             // Update the debug text system with the elapsed time for this frame
@@ -346,18 +337,18 @@ namespace _3DDemoA2
                 _debugView = (DebugView)(((int)_debugView + 1) % DebugViewCount);
 
             // Debug readouts (keyed, so they update in place instead of stacking)
-            DebugText.Log($"Frame: {_averageFrameMs:0.0} ms ({1000.0 / Math.Max(_averageFrameMs, 0.001):0} FPS), " +
-                          $"CPU render: {_averageRenderMs:0.00} ms",
+            DebugText.Log($"Frame: {_frameTimer.AverageFrameMs:0.0} ms ({_frameTimer.AverageFps:0} FPS), " +
+                          $"CPU render: {_frameTimer.AverageRenderMs:0.00} ms",
                 Color4.White, 0.5f, key: 1);
-            DebugText.Log($"Press C for Backface Culling: {(_useBackfaceCulling ? "ON" : "OFF")}", Color4.Yellow, 0.5f, key: 2);
-            DebugText.Log($"Press V for Debug View: {_debugView}", Color4.MediumVioletRed, 0.5f, key: 5);
-            DebugText.Log($"Press Tab to Toggle Lighting", Color4.DarkSlateBlue, 0.5f, key: 3);
-            DebugText.Log($"Press Esc to Quit", Color4.Magenta, 0.5f, key: 4);
-            DebugText.Log($"WASD: Camera Front/Back/Left/Right, Q/E: Camera Up/Down", Color4.DarkGreen, 0.5f, key: 6);
-            DebugText.Log($"Arrows: Roll/Turn Cannon, Shift + Up/Down: Barrel", Color4.DarkGreen, 0.5f, key: 7);
             if (_cannon != null)
                 DebugText.Log($"Barrel: {_cannon.Elevation:0} deg, Heading: {_cannon.Heading:0} deg",
-                    Color4.DarkGreen, 0.5f, key: 8);
+                    Color4.Black, 0.5f, key: 2);
+            DebugText.Log($"WASD: Camera Front/Back/Left/Right, Q/E: Camera Up/Down", Color4.DarkBlue, 0.5f, key: 3);
+            DebugText.Log($"Arrows: Roll/Turn Cannon, Shift + Up/Down: Barrel", Color4.DarkBlue, 0.5f, key: 4);
+            DebugText.Log($"Press V for Debug View: {_debugView}", Color4.MediumVioletRed, 0.5f, key: 5);
+            DebugText.Log($"Press Tab to Toggle Lighting", Color4.DarkSlateBlue, 0.5f, key: 6);
+            DebugText.Log($"Press C for Backface Culling: {(_useBackfaceCulling ? "ON" : "OFF")}", Color4.Yellow, 0.5f, key: 7);
+            DebugText.Log($"Press Esc to Quit", Color4.Magenta, 0.5f, key: 8);
         }
         #endregion
 
@@ -379,31 +370,6 @@ namespace _3DDemoA2
             }
 
             _skybox?.SetProjection(projection);
-        }
-
-        /// <summary>
-        /// Adds one frame's timings to the running totals, and every half second turns them into averages
-        /// (a single frame's numbers jump around too much to read).
-        /// </summary>
-        /// <param name="frameSeconds">Time since the previous frame, in seconds.</param>
-        /// <param name="renderMilliseconds">CPU time spent issuing this frame, in milliseconds.</param>
-        private void UpdateTimingAverages(double frameSeconds, double renderMilliseconds)
-        {
-            _sampleElapsed += frameSeconds;
-            _sampleFrameTime += frameSeconds * 1000.0;
-            _sampleRenderTime += renderMilliseconds;
-            _sampleFrames++;
-
-            if (_sampleElapsed < TIMINGSAMPLESECONDS)
-                return;
-
-            _averageFrameMs = _sampleFrameTime / _sampleFrames;
-            _averageRenderMs = _sampleRenderTime / _sampleFrames;
-
-            _sampleElapsed = 0;
-            _sampleFrameTime = 0;
-            _sampleRenderTime = 0;
-            _sampleFrames = 0;
         }
         #endregion
     }
