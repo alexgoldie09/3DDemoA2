@@ -14,6 +14,9 @@ uniform sampler2D NormalMap; // Tangent-space normal map, OpenGL convention (uni
 uniform sampler2D MetallicMap; // Greyscale, white = metal (unit 2)
 uniform sampler2D RoughnessMap; // Greyscale, white = rough (unit 3)
 
+// Environment: the sky cube map, bound once by Skybox (unit 4, Skybox.CUBEMAPUNIT)
+uniform samplerCube SkyboxMap;
+
 // Material values (set per mesh by Material.Apply): each multiplies its map.
 // A material without a map gets a neutral default instead (white, or a flat normal), so the value is used alone.
 uniform vec3 albedoFactor; // colour tint (white = map unchanged)
@@ -29,21 +32,6 @@ uniform vec3 lightDir; // direction the light travels, in world space (sunlight 
 uniform vec3 lightColor; // colour/intensity of the light
 uniform float ambientStrength; // minimum brightness, so faces facing away aren't pitch black
 uniform vec3 cameraPos; // for specular highlights and reflections
-
-// Environment (what reflective surfaces mirror): sky above, horizon in the middle, ground below
-uniform vec3 skyColour;
-uniform vec3 horizonColour;
-uniform vec3 groundColour;
-
-// Looks up the colour of the surroundings in a given direction.
-// A stand-in for the skybox: once the skybox cube map exists, this becomes texture(skybox, direction).
-vec3 SampleEnvironment(vec3 direction)
-{
-    float up = direction.y;
-    if (up >= 0.0)
-    return mix(horizonColour, skyColour, smoothstep(0.0, 0.5, up)); // horizon fades into sky
-    return mix(horizonColour, groundColour, smoothstep(0.0, 0.2, -up)); // horizon fades quickly into ground
-}
 
 void main()
 {
@@ -107,11 +95,13 @@ void main()
         // Metals reflect light in their own colour; non-metals keep a white highlight
         vec3 specularColour = mix(vec3(1.0), albedo, metallic);
 
-        // Environment reflection: the camera's view ray bounced off the surface, looked up in the surroundings.
-        // Rough surfaces scatter the reflection, approximated by bending the ray towards the normal (a softer look-up),
-        // and reflect less of it. Only metals get it: for non-metals, reflections are faint enough to leave out.
+        // Environment reflection: the camera's view ray bounced off the surface, looked up in the sky cube map.
+        // It is a world-space direction, the same kind the skybox itself is drawn with, so the reflection lines up
+        // with the sky behind the camera. Rough surfaces scatter the reflection, approximated by bending the ray
+        // towards the normal (a softer look-up), and reflect less of it. Only metals get it: for non-metals,
+        // reflections are faint enough to leave out.
         vec3 R = reflect(-V, N);
-        vec3 reflection = SampleEnvironment(normalize(mix(R, N, roughness)));
+        vec3 reflection = texture(SkyboxMap, normalize(mix(R, N, roughness))).rgb;
         vec3 environment = reflection * specularColour * metallic * mix(0.3, 1.0, smoothness);
 
         // Metal's colour comes mostly from what it reflects, so its diffuse is turned down (20% kept, so its

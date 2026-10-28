@@ -32,6 +32,9 @@ namespace _3DDemoA2
         // The animated cannon (also in _scene) but kept separately so keyboard input can drive it
         private Cannon? _cannon;
 
+        // The sky: drawn after the scene with its own shader, so it is kept outside _scene (see Skybox.cs)
+        private Skybox? _skybox;
+
         // How far the cannon may roll from the island's centre: the island's flat edges are 8.56 m out,
         // minus about 1.6 m so the cannon's furthest point (barrel tip / wheel) stays on the grass
         private const float CANNONROLLLIMIT = 6.9f;
@@ -124,17 +127,14 @@ namespace _3DDemoA2
             _modelShader.SetVector3("lightColor", new Vector3(1f, 0.97f, 0.9f)); // warm daylight
             _modelShader.SetFloat("ambientStrength", 0.5f);
 
-            // Environment for reflections: a stand-in for the skybox, a gradient from sky (up) through a
-            // pale horizon to grass (down). The sky matches the clear colour so metals reflect the background.
-            _modelShader.SetVector3("skyColour", new Vector3(Color4.SkyBlue.R, Color4.SkyBlue.G, Color4.SkyBlue.B));
-            _modelShader.SetVector3("horizonColour", new Vector3(0.85f, 0.9f, 0.95f));
-            _modelShader.SetVector3("groundColour", new Vector3(0.3f, 0.38f, 0.22f));
-
             // Texture units: each material map has its own unit (albedo 0, normal 1, metallic 2, roughness 3)
             _modelShader.SetInt("AlbedoMap", Material.ALBEDOMAPUNIT);
             _modelShader.SetInt("NormalMap", Material.NORMALMAPUNIT);
             _modelShader.SetInt("MetallicMap", Material.METALLICMAPUNIT);
             _modelShader.SetInt("RoughnessMap", Material.ROUGHNESSMAPUNIT);
+
+            // The sky cube map is on its own unit, for metal reflections
+            _modelShader.SetInt("SkyboxMap", Skybox.CUBEMAPUNIT);
 
             // Load the scene. All three models were exported already sitting on y = 0,
             // so only sideways offsets are needed to place them on the island's grass without overlapping.
@@ -161,6 +161,10 @@ namespace _3DDemoA2
                 maxDistanceFromCentre: CANNONROLLLIMIT);
             _scene.Add(_cannon);
 
+            // --- Skybox ---
+            // Six faces in OpenGL's cube map target order: +X, -X, +Y, -Y, +Z, -Z.
+            _skybox = new Skybox(["px.png", "nx.png", "py.png", "ny.png", "pz.png", "nz.png"]);
+
             // --- Camera & input ---
             // Create the camera with the specified width, height, and initial position
             _camera = new Camera(_width, _height, _initialCameraPosition);
@@ -184,6 +188,7 @@ namespace _3DDemoA2
                 renderable.Delete();
             _scene.Clear();
             Material.DeleteDefaults();
+            _skybox?.Delete();
             _modelShader?.Delete();
             // Shutdown the debug text system
             DebugText.Shutdown();
@@ -240,7 +245,8 @@ namespace _3DDemoA2
 
                 // Only what can change between frames is uploaded here: the camera and the debug toggles
                 // (the light, environment, texture units and projection are set in OnLoad / OnResize)
-                _modelShader.SetMatrix4("view", _camera.GetViewMatrix());
+                Matrix4 view = _camera.GetViewMatrix(); // shared by the scene and the skybox
+                _modelShader.SetMatrix4("view", view);
                 _modelShader.SetVector3("cameraPos", _camera.Position);
                 _modelShader.SetInt("DebugView", (int)_debugView);
                 _modelShader.SetInt("UseLighting", _useLighting ? 1 : 0);
@@ -258,8 +264,13 @@ namespace _3DDemoA2
                 foreach (var renderable in _scene)
                     renderable.Render(_modelShader);
                 
-                // Back to filled polygons, so the debug text (and anything drawn later) isn't drawn as lines
+                // Back to filled polygons, so the sky and debug text aren't drawn as lines
                 GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Fill);
+
+                // --- Skybox ---
+                // Drawn last (before the text) at the far plane: pixels already covered by the scene fail the
+                // depth test, so the cube map is only sampled where the sky is actually visible
+                _skybox?.Render(view);
             }
 
             // Render the debug text on top of the 3D scene
@@ -319,7 +330,6 @@ namespace _3DDemoA2
             if (_cannon != null)
             {
                 bool shift = kb.IsKeyDown(Keys.LeftShift) || kb.IsKeyDown(Keys.RightShift);
-                // Down is positive and Up negative on purpose: that way round the controls felt right in testing
                 float upDown = (kb.IsKeyDown(Keys.Down) ? 1f : 0f) - (kb.IsKeyDown(Keys.Up) ? 1f : 0f);
                 float leftRight = (kb.IsKeyDown(Keys.Left) ? 1f : 0f) - (kb.IsKeyDown(Keys.Right) ? 1f : 0f);
 
@@ -353,15 +363,22 @@ namespace _3DDemoA2
 
         #region Helper Methods
         /// <summary>
-        /// Uploads the camera's projection matrix to the model shader (on load and whenever the window resizes).
+        /// Uploads the camera's projection matrix to the model and skybox shaders (on load and whenever the window resizes).
         /// </summary>
         private void UploadProjection()
         {
-            if (_modelShader == null || _camera == null)
+            if (_camera == null)
                 return;
 
-            _modelShader.Bind();
-            _modelShader.SetMatrix4("projection", _camera.GetProjectionMatrix());
+            Matrix4 projection = _camera.GetProjectionMatrix();
+
+            if (_modelShader != null)
+            {
+                _modelShader.Bind();
+                _modelShader.SetMatrix4("projection", projection);
+            }
+
+            _skybox?.SetProjection(projection);
         }
 
         /// <summary>

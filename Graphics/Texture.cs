@@ -39,7 +39,7 @@ namespace _3DDemoA2.Graphics
             }
             
             // Uploads always happen on unit 0, so creating a texture never disturbs
-            // whatever is bound to the other units (e.g. a cube map on unit 1)
+            // whatever is bound to the other units (e.g. the skybox cube map on unit 4)
             GL.ActiveTexture(TextureUnit.Texture0);
             
             // Generate a new texture ID and bind it to the OpenGL context

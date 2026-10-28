@@ -16,7 +16,7 @@ namespace _3DDemoA2.Graphics
     internal class Material
     {
         #region Texture Unit Constants
-        // One texture unit per map. Unit 4 onwards is left free (e.g. for the skybox cube map)
+        // One texture unit per map. Unit 4 is the skybox cube map (Skybox.CUBEMAPUNIT)
         public const int ALBEDOMAPUNIT = 0;
         public const int NORMALMAPUNIT = 1;
         public const int METALLICMAPUNIT = 2;
