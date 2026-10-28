@@ -2,7 +2,7 @@
 
 namespace _3DDemoA2
 {
-    class Program
+    internal class Program
     {
         static void Main(string[] args)
         {

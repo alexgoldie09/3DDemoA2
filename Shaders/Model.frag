@@ -8,16 +8,15 @@ in vec3 WorldBitangent; // World-space bitangent (normal mapping)
 
 out vec4 FragColor; // Output colour of the fragment
 
-// Material maps (sampler units are set once in Game; see Material.cs)
 uniform sampler2D AlbedoMap; // Surface colour, laid out to the model's UVs (unit 0)
 uniform sampler2D NormalMap; // Tangent-space normal map, OpenGL convention (unit 1)
 uniform sampler2D MetallicMap; // Greyscale, white = metal (unit 2)
 uniform sampler2D RoughnessMap; // Greyscale, white = rough (unit 3)
 
-// Environment: the sky cube map, bound once by Skybox (unit 4, Skybox.CUBEMAPUNIT)
+// Environment: the sky cube map, bound once by Skybox (unit 4)
 uniform samplerCube SkyboxMap;
 
-// Material values (set per mesh by Material.Apply): each multiplies its map.
+// Material values (set per mesh): each multiplies its map.
 // A material without a map gets a neutral default instead (white, or a flat normal), so the value is used alone.
 uniform vec3 albedoFactor; // colour tint (white = map unchanged)
 uniform float metallicFactor; // 0 = non-metal, 1 = metal
@@ -26,7 +25,7 @@ uniform float normalStrength; // 0 = flat, 1 = normal map as authored
 uniform float detailScale; // how many times the detail maps repeat across the UVs
 
 // Debug and lighting
-uniform int DebugView; // one of the DEBUGVIEW_ values, #defined from the C# DebugView enum (see DebugView.cs)
+uniform int DebugView; // one of the DEBUGVIEW_ values, #defined from the C# DebugView enum
 uniform int UseLighting; // 1 = lit, 0 = raw texture colour
 uniform vec3 lightDir; // direction the light travels, in world space (sunlight pointing down)
 uniform vec3 lightColor; // colour/intensity of the light
@@ -45,17 +44,19 @@ void main()
     // --- Surface normal ---
     // Without a normal map, the flat default unpacks to about (0, 0, 1), which leaves the mesh normal unchanged
     vec3 N = normalize(WorldNormal); // re-normalise: interpolation shortens it
-    // TBN: tangent, bitangent and normal as the axes of the surface. The tangent is straightened to be exactly
-    // perpendicular to the normal (Gram-Schmidt), and the bitangent's sign keeps mirrored UVs the right way round.
+    
+    // Tangent, bitangent and normal as the axes of the surface. 
+    // The tangent is straightened to be exactly perpendicular to the normal, and the bitangent's sign keeps mirrored UVs the right way round.
     vec3 T = normalize(WorldTangent - dot(WorldTangent, N) * N);
     float handedness = dot(cross(N, T), WorldBitangent) < 0.0 ? -1.0 : 1.0;
     vec3 B = cross(N, T) * handedness;
 
-    // The map stores directions as colours (0..1), so unpack to -1..1; scaling X/Y sets how strongly it bends
+    // Normal mapping: the normal map is in tangent space, so we transform it to world space using the TBN matrix.
     vec3 mapped = texture(NormalMap, detailUV).rgb * 2.0 - 1.0;
     mapped.xy *= normalStrength;
     N = normalize(mat3(T, B, N) * mapped);
 
+    // --- Debug views ---
     if (DebugView == DEBUGVIEW_NORMALS)
     // Normals: Map each normal component from -1..1 to 0..1: +X = red, +Y (up) = green, +Z = blue
     FragColor = vec4(normalize(WorldNormal) * 0.5 + 0.5, 1.0);
@@ -71,6 +72,7 @@ void main()
     else if (DebugView == DEBUGVIEW_ROUGHNESS)
     // Roughness: white = rough, black = smooth
     FragColor = vec4(vec3(roughness), 1.0);
+    // --- Lighting ---
     else if (UseLighting == 0)
     // Unlit: the colour exactly as textured
     FragColor = vec4(albedo, 1.0);
@@ -95,19 +97,16 @@ void main()
         // Metals reflect light in their own colour; non-metals keep a white highlight
         vec3 specularColour = mix(vec3(1.0), albedo, metallic);
 
-        // Environment reflection: the camera's view ray bounced off the surface, looked up in the sky cube map.
-        // It is a world-space direction, the same kind the skybox itself is drawn with, so the reflection lines up
-        // with the sky behind the camera. Rough surfaces scatter the reflection, approximated by bending the ray
-        // towards the normal (a softer look-up), and reflect less of it. Only metals get it: for non-metals,
-        // reflections are faint enough to leave out.
+        // Environment reflection: the skybox reflected in the surface, blurred by roughness. 
+        // The reflection is tinted by the specular colour and scaled by the metallic factor.
         vec3 R = reflect(-V, N);
         vec3 reflection = texture(SkyboxMap, normalize(mix(R, N, roughness))).rgb;
         vec3 environment = reflection * specularColour * metallic * mix(0.3, 1.0, smoothness);
 
-        // Metal's colour comes mostly from what it reflects, so its diffuse is turned down (20% kept, so its
-        // shape still reads in direct sunlight)
+        // Diffuse amount: metals don't have diffuse reflection, so we scale it down by the metallic factor.
         float diffuseAmount = 1.0 - 0.8 * metallic;
 
+        // Combine the three lighting components, plus a minimum ambient brightness so faces facing away from the light aren't pitch black.
         vec3 colour = albedo * diffuseAmount * (ambientStrength + diffuse) * lightColor
         + specular * specularColour * lightColor
         + environment;

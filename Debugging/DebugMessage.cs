@@ -7,6 +7,7 @@ namespace _3DDemoA2.Debugging
     /// </summary>
     internal class DebugMessage
     {
+        #region Public Fields
         /// <summary>
         /// Key used to replace this message instead of adding a new line. -1 = no key.
         /// </summary>
@@ -26,5 +27,6 @@ namespace _3DDemoA2.Debugging
         /// Seconds left before the message disappears.
         /// </summary>
         public float TimeRemaining { get; set; }
+        #endregion
     }
 }

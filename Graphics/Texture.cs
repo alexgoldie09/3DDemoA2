@@ -11,6 +11,7 @@ namespace _3DDemoA2.Graphics
     /// </summary>
     internal class Texture : IGraphicsResources
     {
+        #region Public Fields
         /// <summary>
         /// Gets the ID of the texture object in OpenGL.
         /// </summary>
@@ -20,6 +21,7 @@ namespace _3DDemoA2.Graphics
         /// The texture unit this texture always binds to (e.g. Material.NORMALMAPUNIT).
         /// </summary>
         public int Unit { get; private set; }
+        #endregion
         
         #region Constructors
         /// <summary>
@@ -38,8 +40,6 @@ namespace _3DDemoA2.Graphics
                 return;
             }
             
-            // Uploads always happen on unit 0, so creating a texture never disturbs
-            // whatever is bound to the other units (e.g. the skybox cube map on unit 4)
             GL.ActiveTexture(TextureUnit.Texture0);
             
             // Generate a new texture ID and bind it to the OpenGL context
@@ -57,7 +57,6 @@ namespace _3DDemoA2.Graphics
             GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)magFilter);
             
             // Image files store the top row first, but OpenGL expects the bottom row first, so flip on load.
-            // This flag is global in StbImageSharp, so it is set explicitly every time.
             StbImage.stbi_set_flip_vertically_on_load(1);
 
             // Use a try-catch block to handle potential exceptions during file reading and image loading

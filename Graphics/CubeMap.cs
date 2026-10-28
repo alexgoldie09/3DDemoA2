@@ -7,20 +7,21 @@ using StbImageSharp;
 namespace _3DDemoA2.Graphics
 {
     /// <summary>
-    /// Represents a cube map texture in OpenGL: six square images, one per face of a cube,
-    /// sampled with a direction instead of UVs. Used for the skybox, and by the model shader for reflections.
+    /// Represents a cube map texture in OpenGL, which is used for environment mapping, skyboxes, and reflections.
     /// </summary>
     internal class CubeMap : IGraphicsResources
     {
+        #region Public Fields
         /// <summary>
         /// Gets the ID of the cube map texture object in OpenGL.
         /// </summary>
         public int ID { get; }
 
         /// <summary>
-        /// The texture unit this cube map always binds to (e.g. Skybox.CUBEMAPUNIT).
+        /// Gets the texture unit this cube map binds to (e.g., Skybox.CUBEMAPUNIT).
         /// </summary>
         public int Unit { get; private set; }
+        #endregion
 
         #region Constructors
         /// <summary>
@@ -28,10 +29,8 @@ namespace _3DDemoA2.Graphics
         /// Every face must be square and the same size as the others, otherwise OpenGL treats the cube map
         /// as incomplete and it samples as black.
         /// </summary>
-        /// <param name="faceFiles">
-        /// Six files in OpenGL's face order: right (+X), left (-X), top (+Y), bottom (-Y), front (+Z), back (-Z).
-        /// </param>
-        /// <param name="unit">The texture unit this cube map always binds to (e.g. Skybox.CUBEMAPUNIT).</param>
+        /// <param name="faceFiles">The six face files in this order: +X, -X, +Y, -Y, +Z, -Z.</param>
+        /// <param name="unit">The texture unit this cube map always binds to.</param>
         public CubeMap(string[] faceFiles, int unit)
         {
             Unit = unit;
@@ -41,9 +40,7 @@ namespace _3DDemoA2.Graphics
                 DebugText.Log($"Cube map needs 6 faces but was given {faceFiles.Length}.", Color4.Red, 6f);
                 return;
             }
-
-            // Uploads always happen on unit 0, the same as Texture, so creating a cube map never disturbs
-            // whatever is bound to the other units
+            
             GL.ActiveTexture(TextureUnit.Texture0);
 
             // Generate a new texture ID and bind it as a cube map (a different target to a 2D texture)
@@ -51,8 +48,7 @@ namespace _3DDemoA2.Graphics
             GL.BindTexture(TextureTarget.TextureCubeMap, ID);
 
             // Wrapping: clamp to edge on all three axes (S, T and R, the third axis of a direction lookup).
-            // A direction that lands exactly on the seam between two faces then reads that face's edge pixel,
-            // instead of blending in the opposite edge, which would show as a thin line in the sky
+            // This prevents the cube map from sampling the opposite face when the direction is near an edge.
             GL.TexParameter(TextureTarget.TextureCubeMap, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToEdge);
             GL.TexParameter(TextureTarget.TextureCubeMap, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToEdge);
             GL.TexParameter(TextureTarget.TextureCubeMap, TextureParameterName.TextureWrapR, (int)TextureWrapMode.ClampToEdge);
@@ -62,12 +58,12 @@ namespace _3DDemoA2.Graphics
             GL.TexParameter(TextureTarget.TextureCubeMap, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
 
             // Cube map faces are used the way they are stored in the file (top row first), so no flip.
-            // This flag is global in StbImageSharp; Texture sets it back to 1 every time it loads.
             StbImage.stbi_set_flip_vertically_on_load(0);
-
-            // The first face's size, which every other face must match
+            
+            // Keep track of the size of the first face to ensure all faces are square and the same size
             int faceSize = 0;
-
+            
+            // Load each face of the cube map from the provided files
             for (int i = 0; i < faceFiles.Length; i++)
             {
                 // Use a try-catch block to handle potential exceptions during file reading and image loading

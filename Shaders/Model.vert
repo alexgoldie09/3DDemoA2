@@ -1,11 +1,10 @@
 #version 330 core
 
-// Vertex attributes (locations match the constants in Mesh.cs)
-layout(location = 0) in vec3 aPos; // Vertex position (model space)
+layout(location = 0) in vec3 aPos; // Vertex position 
 layout(location = 1) in vec2 aTexCoord; // Texture coordinate
-layout(location = 2) in vec3 aNormal; // Surface normal (model space)
-layout(location = 3) in vec3 aTangent; // Direction the texture's U axis runs (model space), for normal mapping
-layout(location = 4) in vec3 aBitangent; // Direction the texture's V axis runs (model space), for normal mapping
+layout(location = 2) in vec3 aNormal; // Surface normal
+layout(location = 3) in vec3 aTangent; // Direction the texture's U axis runs, for normal mapping
+layout(location = 4) in vec3 aBitangent; // Direction the texture's V axis runs, for normal mapping
 
 out vec2 TexCoord; // Texture coordinate for the fragment shader
 out vec3 WorldNormal; // Normal in world space (for lighting / reflections)

@@ -4,7 +4,7 @@ in vec3 TexCoords; // Direction from the cube's centre, from the vertex shader
 
 out vec4 FragColor; // Output colour of the fragment
 
-uniform samplerCube SkyboxMap; // The sky cube map (unit 4, Skybox.CUBEMAPUNIT)
+uniform samplerCube SkyboxMap; // The sky cube map (unit 4)
 
 void main()
 {

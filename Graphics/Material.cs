@@ -3,20 +3,13 @@ using OpenTK.Mathematics;
 namespace _3DDemoA2.Graphics
 {
     /// <summary>
-    /// How a surface looks and reacts to light: optional albedo (colour), normal, metallic and roughness maps,
-    /// plus a value for each.
-    /// Each value is multiplied by its map (the same "factor x texture" convention the glTF format uses).
-    /// A missing map is replaced by a neutral 1x1 default texture, so the value is then used on its own.
-    /// So one atlas can be fully metal on one part while another part, like the wheels, just uses plain values.
-    ///
-    /// This is not physically based rendering: the values feed the existing Blinn-Phong lighting
-    /// (see Model.frag), with roughness controlling the highlight and metallic tinting it.
-    /// A material does not own its textures meaning whoever created them deletes them.
+    /// A material is a set of textures and values that describe how a surface looks. The material is applied to a mesh
+    /// before drawing, binding its textures to the correct units and uploading its values to the shader.
     /// </summary>
     internal class Material
     {
         #region Texture Unit Constants
-        // One texture unit per map. Unit 4 is the skybox cube map (Skybox.CUBEMAPUNIT)
+        // One texture unit per map.
         public const int ALBEDOMAPUNIT = 0;
         public const int NORMALMAPUNIT = 1;
         public const int METALLICMAPUNIT = 2;
@@ -32,8 +25,7 @@ namespace _3DDemoA2.Graphics
         #endregion
 
         #region Redundant State Tracking
-        // The material applied most recently. Its maps are still bound and its values still uploaded,
-        // so applying it again straight away would only repeat the same OpenGL calls.
+        // The material applied most recently.
         private static Material? _lastApplied;
 
         /// <summary>
@@ -50,7 +42,6 @@ namespace _3DDemoA2.Graphics
         #region Public Fields
         /// <summary>
         /// The surface colour (albedo) map, e.g. a model's baked atlas, or null to use Colour alone.
-        /// Sampled with the model's own UVs (not DetailScale), since it is laid out to match the model.
         /// Must be created for unit ALBEDOMAPUNIT.
         /// </summary>
         public Texture? AlbedoMap { get; set; }
@@ -95,23 +86,19 @@ namespace _3DDemoA2.Graphics
         public float NormalStrength { get; set; } = 1f;
 
         /// <summary>
-        /// How many times the detail maps (normal, metallic, roughness) repeat across the UVs.
-        /// Tiling detail maps on an atlas need more than 1,
-        /// otherwise one copy is stretched over the whole model.
+        /// How many times the detail maps repeat across the surface. 1 = as authored, 2 = twice as many repeats, etc.
         /// </summary>
         public float DetailScale { get; set; } = 1f;
         #endregion
 
         #region Public API
         /// <summary>
-        /// Binds this material's maps to their texture units and uploads its values,
-        /// unless it is already the current material (then nothing needs to change).
-        /// Note: changing a material's values between two draws in the same frame won't be picked up
-        /// for the second draw; call ResetLastApplied first if that's ever needed.
+        /// Applies this material to the currently bound shader, binding its textures and uploading its values.
         /// </summary>
         /// <param name="shader">The bound model shader.</param>
         public void Apply(ShaderProgram shader)
         {
+            // Skip redundant applies: if the last applied material is this one, nothing needs to change.
             if (_lastApplied == this)
             {
                 SkippedCount++;
@@ -121,6 +108,7 @@ namespace _3DDemoA2.Graphics
             _lastApplied = this;
             AppliedCount++;
 
+            // Create the shared default textures
             if (_defaultAlbedo == null)
                 _defaultAlbedo = new Texture(255, 255, 255, ALBEDOMAPUNIT);
             if (_defaultNormal == null)
@@ -136,6 +124,7 @@ namespace _3DDemoA2.Graphics
             BindOrDefault(MetallicMap, _defaultMetallic);
             BindOrDefault(RoughnessMap, _defaultRoughness);
 
+            // Upload the material values to the shader
             shader.SetVector3("albedoFactor", Colour);
             shader.SetFloat("metallicFactor", Metallic);
             shader.SetFloat("roughnessFactor", Roughness);
@@ -144,8 +133,7 @@ namespace _3DDemoA2.Graphics
         }
 
         /// <summary>
-        /// Forgets the current material and resets the counts. Call at the start of each frame's scene drawing:
-        /// other drawing in between (e.g. DebugText binding its font to unit 0) can replace what was bound.
+        /// Forgets the current material and resets the counts. Call at the start of each frame's scene drawing.
         /// </summary>
         public static void ResetLastApplied()
         {

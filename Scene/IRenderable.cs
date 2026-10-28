@@ -7,15 +7,17 @@ namespace _3DDemoA2.Scene
     /// </summary>
     internal interface IRenderable
     {
+        #region Public API
         /// <summary>
         /// Draws the object. The shader is already bound, with the view, projection and lighting set.
         /// </summary>
         /// <param name="shader">The model shader to upload this object's matrices to.</param>
-        void Render(ShaderProgram shader);
+        public void Render(ShaderProgram shader);
 
         /// <summary>
         /// Frees the object's GPU resources (meshes and textures).
         /// </summary>
-        void Delete();
+        public void Delete();
+        #endregion
     }
 }

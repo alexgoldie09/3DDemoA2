@@ -5,9 +5,7 @@ using OpenTK.Mathematics;
 namespace _3DDemoA2.Scene
 {
     /// <summary>
-    /// Represents a static prop in the scene: a 3D model that does not animate or move, drawn with one material
-    /// built from up to four texture files (colour, normal, metallic, roughness). Any file left as null uses the
-    /// material's neutral default instead.
+    /// The static prop is a 3D model with a single material, placed in the world at a fixed position and rotation.
     /// </summary>
     internal class StaticProp : IRenderable
     {
@@ -19,6 +17,7 @@ namespace _3DDemoA2.Scene
         private readonly List<Texture> _textures = new();
         #endregion
         
+        #region Constructors
         /// <summary>
         /// Constructor that loads the model and its textures and places it in the world.
         /// The textures are owned and deleted by this prop.
@@ -27,12 +26,11 @@ namespace _3DDemoA2.Scene
         /// <param name="objFile">The .obj file.</param>
         /// <param name="position">World position of the model's origin.</param>
         /// <param name="colorMapFile">The colour (albedo) texture file, or null for plain white.</param>
-        /// <param name="normalMapFile">The normal map file (OpenGL convention), or null for the mesh normals.</param>
+        /// <param name="normalMapFile">The normal map file, or null for the mesh normals.</param>
         /// <param name="metallicMapFile">The metallic map file, or null for the material's Metallic value alone.</param>
         /// <param name="roughnessMapFile">The roughness map file, or null for the material's Roughness value alone.</param>
         /// <param name="yawDegrees">Rotation around the vertical (Y) axis, in degrees.</param>
-        /// <param name="material">The material values to use (e.g. DetailScale); null = a new matte material.
-        /// Any texture file given above replaces the matching map in it.</param>
+        /// <param name="material">The material values to use (e.g. DetailScale); null = a new matte material.</param>
         public StaticProp(string name, string objFile, Vector3 position,
             string? colorMapFile, string? normalMapFile, string? metallicMapFile, string? roughnessMapFile,
             float yawDegrees = 0f, Material? material = null)
@@ -47,6 +45,7 @@ namespace _3DDemoA2.Scene
                     material.Metallic = 1f;
             }
 
+            // Load the textures, if any, and assign them to the material.
             Texture? colorMap = LoadTexture(colorMapFile, Material.ALBEDOMAPUNIT);
             if (colorMap != null)
                 material.AlbedoMap = colorMap;
@@ -70,6 +69,7 @@ namespace _3DDemoA2.Scene
                 Material = material
             };
         }
+        #endregion
         
         #region IRenderable Functions
         /// <summary>

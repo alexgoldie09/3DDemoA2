@@ -4,7 +4,7 @@ namespace _3DDemoA2.Utilities
     /// Single place that knows where asset files live on disk.
     /// The .csproj copies the Shaders, Textures and Models folders next to the executable on every build,
     /// so paths are built from the executable's folder (AppContext.BaseDirectory) rather than the
-    /// current working directory. This works from the IDE, `dotnet run`, and the compiled .exe in bin/.
+    /// current working directory.
     /// </summary>
     internal static class AssetPaths
     {

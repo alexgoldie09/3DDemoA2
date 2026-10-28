@@ -4,16 +4,13 @@ using OpenTK.Mathematics;
 namespace _3DDemoA2.Graphics
 {
     /// <summary>
-    /// CPU-side mesh data, ready to be uploaded to the GPU by a Mesh.
-    /// One entry per unique vertex in each attribute list (positions, UVs and normals line up by index),
-    /// plus an index list where every three indices form one triangle.
-    /// Filled by the ObjLoader, but anything that produces these lists can create a Mesh.
-    /// 
-    /// Adapted from the Vertex struct and Mesh data members (Position, Normal, TexCoords + indices)
-    /// in de Vries (n.d.), "Mesh", LearnOpenGL, stored here as separate lists to match this project's one-VBO-per-attribute layout.
+    /// Represents the raw data of a 3D mesh, including vertex positions, texture coordinates, normals, tangents, bitangents, and indices.
+    ///
+    /// This class is used to store mesh data on the CPU before it is uploaded to the GPU for rendering.
     /// </summary>
     internal class MeshData
     {
+        #region Public Fields
         /// <summary>
         /// Vertex positions in the model's local space.
         /// </summary>
@@ -53,7 +50,9 @@ namespace _3DDemoA2.Graphics
         /// The number of indices in the mesh, which is typically three per triangle.
         /// </summary>
         public int IndexCount => Indices.Count;
+        #endregion
 
+        #region Public API
         /// <summary>
         /// Moves every vertex by the same offset, effectively translating the entire mesh in 3D space.
         /// </summary>
@@ -66,15 +65,15 @@ namespace _3DDemoA2.Graphics
         
         /// <summary>
         /// Works out a tangent and bitangent for every vertex from the triangles' positions and UVs.
-        /// For each triangle, the two edges are expressed in terms of how far U and V change along them;
-        /// solving that gives the directions U and V run in 3D. Each vertex then averages the results
-        /// of the triangles that share it.
+        /// For each triangle, the two edges are expressed in terms of how far U and V change along them.
+        /// Each vertex then averages the results of the triangles that share it.
         /// </summary>
         public void ComputeTangents()
         {
             var tangentSums = new Vector3[VertexCount];
             var bitangentSums = new Vector3[VertexCount];
 
+            // For every triangle, work out the tangent and bitangent directions and add them to the sums for each vertex
             for (int i = 0; i + 2 < Indices.Count; i += 3)
             {
                 int i0 = (int)Indices[i], i1 = (int)Indices[i + 1], i2 = (int)Indices[i + 2];
@@ -89,6 +88,7 @@ namespace _3DDemoA2.Graphics
                 if (MathF.Abs(determinant) < 1e-8f)
                     continue;
 
+                // The tangent and bitangent are scaled by the inverse of the determinant to account for the UV area
                 float f = 1f / determinant;
                 Vector3 tangent = f * (deltaUV2.Y * edge1 - deltaUV1.Y * edge2);
                 Vector3 bitangent = f * (-deltaUV2.X * edge1 + deltaUV1.X * edge2);
@@ -100,8 +100,10 @@ namespace _3DDemoA2.Graphics
                 }
             }
 
+            // Clear the existing tangents and bitangents and normalize the summed vectors for each vertex
             Tangents.Clear();
             Bitangents.Clear();
+            
             for (int v = 0; v < VertexCount; v++)
             {
                 Vector3 tangent = tangentSums[v];
@@ -123,22 +125,20 @@ namespace _3DDemoA2.Graphics
         }
 
         /// <summary>
-        /// Validates the mesh data to ensure it is well-formed and ready for rendering. Checks include:
-        /// - Non-empty vertex and index lists.
-        /// - Matching counts of positions, UVs, and normals.
-        /// - Index count being a multiple of 3 (for triangles).
-        /// - All indices being within the valid range of vertex indices.
+        /// Validates the mesh data to ensure it is well-formed and ready for rendering.
         /// </summary>
         /// <param name="name">A name for the mesh</param>
         /// <returns>True if the mesh is valid; otherwise, false.</returns>
         public bool Validate(string name)
         {
+            // Check for empty mesh
             if (VertexCount == 0 || IndexCount == 0)
             {
                 DebugText.Log($"{name}: mesh is empty", Color4.Red, 8f);
                 return false;
             }
             
+            // Check for attribute count mismatch
             if (UVs.Count != VertexCount || Normals.Count != VertexCount)
             {
                 DebugText.Log($"{name}: attribute count mismatch " +
@@ -146,12 +146,14 @@ namespace _3DDemoA2.Graphics
                 return false;
             }
             
+            // Check for index count being a multiple of 3
             if (IndexCount % 3 != 0)
             {
                 DebugText.Log($"{name}: index count {IndexCount} is not a multiple of 3", Color4.Red, 8f);
                 return false;
             }
 
+            // Check for indices being within the valid range
             foreach (uint index in Indices)
             {
                 if (index >= VertexCount)
@@ -163,6 +165,6 @@ namespace _3DDemoA2.Graphics
             
             return true;
         }
-
+        #endregion
     }
 }

@@ -1,39 +1,48 @@
 # GPR202 - A2 OpenGL Project
 ## DISCLAIMER
 **This project is for educational purposes only. 
-The code and assets used in this project are either created by myself or sourced from free and open resources in the exception of one instance highlighted in the AI Usage section.**  
+The code and assets used in this project are either created by myself or sourced from free and open resources in the exception of the instance highlighted in the AI Usage section.**  
 
 ### Important note
-*The majority of the project uses knowledge built upon in other classes such as my use of multiple classes and static functions regarding OOP techniques. The other part uses a series of YouTube tutorials on OpenGL by Coding with Sphere (2023) to form the basis of all functionality.*
+*The majority of the project uses knowledge built upon in other classes such as:*
+- *Vector, quaternion, and matrix manipulation from MAT101 and MAT102.*
+- *Use of multiple different class / interface types regarding OOP techniques from PYF200, ADS103, and ICG202.* 
+- *Graphics pipeline and lighting formulas such as Blinn-Phong and Lambertian Reflectance from ICG202.*
+
+*The assessment builds on previous code from A1 and code provided in lectures.*
+
+*The models in the project were built by myself in the exception of the Alien which was provided to me by a university friend strictly for testing complex meshes. Metal and skybox textures came from AmbientCG; Freestylized (2018; 2026).*
 
 ### TO RUN THE APPLICATION
 Run bin/Debug/net10.0/3DDemoA2.exe from within the extracted project folder (requires .NET 10).
 
 ## AI Usage
-I have used ChatGPT to assist in the development of this project. The AI was used to provide guidance on how to code the debugging functionality as the current resource material was confusing. The debugging functionality was implemented to display information being rendered on the screen and was modelled after EpicGames (2026) AddOnScreenDebugMessage function.
+I have used ChatGPT to assist in the development of this project. The AI was used to provide guidance on how to code the objloader and lighting as the current resource material needed further simplification (OpenAI, 2026). Both these principles were taken from sources used and the AI helped understand how to implement them in my project (de Vries, 2019, 2020a; Groff, 2010; Jansson, 2026; opengl-tutorial, 2022, 2026; Sas, 2025). 
 
-All code written and implemented in this project is my own work, and since the debugging functionality was an additional feature, the project still relies on the sources below. The AI was used as a tool to enhance my understanding of OpenGL to perform other rendering tasks and add an extra debug feature.
+All code written and implemented in this project is my own work.
 
 ## Project Overview
-This project is a 3D graphics application built using OpenGL. It demonstrates basic rendering techniques and provides a perspective view for users to explore two 3D models with applied animations. The user may interact via toggling the backface culling and by changing the camera position.
+This project is a 3D OpenGL application that demonstrates the use of various graphics programming techniques. The application features a 3D environment with interactive elements, including a first-person camera, textured models that can be viewed in multiple passes, and lighting effects. The project aims to showcase the understanding and application of OpenGL concepts learned throughout the course.
 
 ## Resources
-* Adobe. (n.d.). Hieroglyph wall ancient egypt texture [Graphic]. In stock.adobe.com. Retrieved https://stock.adobe.com/search?k=hieroglyph+wall+ancient+egypt+texture
-* Cile. (n.d.). Bitpap font [Graphic]. In dafont.com. Retrieved https://www.dafont.com/search.php?q=bit
-* Coding with Sphere. (2023a, May 1). Creating the window | how to code minecraft without a game engine #2 [Video]. YouTube. https://www.youtube.com/watch?v=gW_LUVZgVP4
-* Coding with Sphere. (2023b, May 4). Drawing the first triangle | how to code minecraft without a game engine #3 [Video]. YouTube. https://www.youtube.com/watch?v=LVE0q8aMHQM
-* Coding with Sphere. (2023c, May 10). Creating a 2D dirt block! | How to code minecraft without a game engine #4 [Video]. YouTube. https://www.youtube.com/watch?v=N-1sxprYwhU
-* Coding with Sphere. (2023d, May 17). Creating a 3D block! | How to code minecraft without a game engine EP. 5 [Video]. YouTube. https://www.youtube.com/watch?v=0KlZjpAOiiY
-* Coding with Sphere. (2023e, May 22). First person camera | how to code minecraft without a game engine (OpenTK/OpenGL C#) [Video]. YouTube. https://www.youtube.com/watch?v=S6KdFTaX8Ww
-* Coding with Sphere. (2023f, June 2). The block class part 1 | how to code minecraft (OpenTK/OpenGL C#) | EP 7 [Video]. YouTube. https://www.youtube.com/watch?v=IhqaFLa23aU
-* Coding with Sphere. (2023g, June 10). Chunking part 1 | how to code minecraft (OpenTK/OpenGL C#) | EP. 8 [Video]. YouTube. https://www.youtube.com/watch?v=RZH7QUGm8UM
-* de Vries, J. (2020). LearnOpenGL - text rendering. Learnopengl.Com. https://learnopengl.com/In-Practice/Text-Rendering
-* Epic Games. (2026). AddOnScreenDebugMessage. Dev.Epicgames.Com. https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/UEngine/AddOnScreenDebugMessage
-* Ho Ahn, S. (2024). OpenGL projection matrix. Www.Songho.Ca. https://www.songho.ca/opengl/gl_projectionmatrix.html
-* Ho Ahn, S. (2025a). OpenGL cone & pyramid. Www.Songho.Ca. https://www.songho.ca/opengl/gl_cone.html
-* Ho Ahn, S. (2025b). OpenGL vertex array object (VAO). Www.Songho.Ca. https://www.songho.ca/opengl/gl_vao.html
-* Ho Ahn, S. (2025c). OpenGL vertex buffer object (VBO). Www.Songho.Ca. https://www.songho.ca/opengl/gl_vbo.html
-* Ho Ahn, S. (2026). OpenGL matrix class. Www.Songho.Ca. https://www.songho.ca/opengl/gl_matrix.html
-* Lazy Foo Productions. (2026). bitmap fonts. Lazyfoo.Net. https://lazyfoo.net/tutorials/OpenGL/20_bitmap_fonts/index.php
-* OpenAI. (2026, October 2). OpenGL debug text system [Generative AI chat]. ChatGPT. https://chatgpt.com/share/6ac38f0b-a31c-83ec-9cf2-f7e86dc92669
-* Shreyas. (2024, September 14). How to render TrueType fonts in OpenGL using stb_truetype.H. DEV Community. https://dev.to/shreyaspranav/how-to-render-truetype-fonts-in-opengl-using-stbtruetypeh-1p5k
+* AmbientCG. (2018). Metal 001 [Graphic]. https://ambientcg.com/view?id=Metal001
+* Barry Evans. (2019, November 12). Basic Shading Concepts: Lambert and Phong Models [Video]. YouTube. https://www.youtube.com/watch?v=z0-MsGvKOhg
+* Basler, R. (2013). Three normal mapping techniques explained for the mathematically uninclined. Gamedeveloper.Com. https://www.gamedeveloper.com/programming/three-normal-mapping-techniques-explained-for-the-mathematically-uninclined
+* Coding with Sphere. (2023, May 22). First person camera | how to code minecraft without a game engine (OpenTK/OpenGL C#) [Video]. YouTube. https://www.youtube.com/watch?v=S6KdFTaX8Ww
+* de Vries, J. (2018). LearnOpenGL - model. Learnopengl.Com. https://learnopengl.com/Model-Loading/Model
+* de Vries, J. (2019). LearnOpenGL - basic lighting. Learnopengl.Com. https://learnopengl.com/Lighting/Basic-Lighting
+* de Vries, J. (2020a). LearnOpenGL - advanced lighting. Learnopengl.Com. https://learnopengl.com/Advanced-Lighting/Advanced-Lighting
+* de Vries, J. (2020b). LearnOpenGL - cubemaps. Learnopengl.Com. https://learnopengl.com/Advanced-OpenGL/Cubemaps
+* DragoniteSpam. (2024, January 8). Tangents and bitangents - 3D games in GameMaker [Video]. YouTube. https://www.youtube.com/watch?v=yBEi9l-n_O4
+* EREMEX JSC. (2026). Skybox. EMX Controls Documentation. https://eremexcontrols.net/controls/graphics3dcontrol/skybox/
+* Freestylized. (2026). sky_126 [Graphic]. Freestylized.com. https://freestylized.com/skybox/sky_126/
+* Gordan, V. (2021). YoutubeOpenGL 27 - Normal Maps (Version master) [Source Code]. GitHub. https://github.com/VictorGordan/opengl-tutorials/tree/main/YoutubeOpenGL%2027%20-%20Normal%20Maps
+* Groff, J. (2010, July 15). An intro to modern OpenGL. Chapter 4: Rendering a dynamic 3D scene with Phong shading. Durian Software. https://duriansoftware.com/joe/an-intro-to-modern-opengl.-chapter-4:-rendering-a-dynamic-3d-scene-with-phong-shading
+* Jansson, C. (2026). ObjLoader (Version master) [Source Code]. GitHub. https://github.com/chrisjansson/objloader
+* lordofdankness. (2022). GLTF2.0-reference-guide. Scribd. https://www.scribd.com/document/619514490/gltf20-reference-guide
+* OpenAI. (2026, October 16). Implement OBJ loader c# [Generative AI chat]. ChatGPT. https://chatgpt.com/share/6ae1d45d-d504-83ec-b25e-71b1f10d5cf3
+* opengl-tutorial. (2022). Tutorial 7 : Model loading. Www.Opengl-Tutorial.Org. https://www.opengl-tutorial.org/beginners-tutorials/tutorial-7-model-loading/
+* opengl-tutorial. (2024). Tutorial 13 : Normal mapping. Www.Opengl-Tutorial.Org. https://www.opengl-tutorial.org/intermediate-tutorials/tutorial-13-normal-mapping/
+* opengl-tutorial. (2026). Ogl: tutorial07_model_loading (Version master) [Source Code]. GitHub. https://github.com/opengl-tutorials/ogl/tree/master/tutorial07_model_loading
+* Sas. (2025, October 18). Phong vs Lambert: Visualizing the phong illumination model in OpenGL 🎨. Medium. https://medium.com/@chamudi_sashanka/phong-vs-lambert-visualizing-the-phong-illumination-model-in-opengl-3b447cb07c0e
+* Victor Gordan. (2021, August 3). OpenGL tutorial 27 - normal maps [Video]. YouTube. https://www.youtube.com/watch?v=JNj1A1bl7gg

@@ -5,11 +5,14 @@ namespace _3DDemoA2.Graphics
     /// </summary>
     public interface IGraphicsResources
     {
+        #region Public Fields
         /// <summary>
         /// Gets the ID of the graphics resource.
         /// </summary>
         public int ID { get; }
+        #endregion
 
+        #region Public API
         /// <summary>
         /// Binds the graphics resource to the current OpenGL context.
         /// </summary>
@@ -24,5 +27,6 @@ namespace _3DDemoA2.Graphics
         /// Deletes the graphics resource from the GPU.
         /// </summary>
         public void Delete();
+        #endregion
     }
 }

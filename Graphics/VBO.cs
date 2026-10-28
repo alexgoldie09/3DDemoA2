@@ -9,11 +9,14 @@ namespace _3DDemoA2.Graphics
     /// </summary>
     internal class VBO : IGraphicsResources
     {
+        #region Public Fields
         /// <summary>
         /// Gets the ID of the Vertex Buffer Object (VBO).
         /// </summary>
         public int ID { get; }
+        #endregion
 
+        #region Constructors
         /// <summary>
         /// Constructor that initialises a new instance of the VBO class with Vector3 data.
         /// Used for storing 3D vertex positions in the buffer to create a 3D model.
@@ -39,6 +42,7 @@ namespace _3DDemoA2.Graphics
             GL.BindBuffer(BufferTarget.ArrayBuffer, ID);
             GL.BufferData(BufferTarget.ArrayBuffer, data.Count * Vector2.SizeInBytes, data.ToArray(), BufferUsageHint.StaticDraw);
         }
+        #endregion
         
         #region IGraphicsResources Functions
         /// <summary>

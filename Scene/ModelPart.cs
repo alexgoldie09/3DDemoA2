@@ -47,6 +47,7 @@ namespace _3DDemoA2.Scene
         public List<ModelPart> Children { get; } = new();
         #endregion
 
+        #region Constructors
         /// <summary>
         /// Constructor that creates a part with an optional mesh.
         /// </summary>
@@ -57,6 +58,7 @@ namespace _3DDemoA2.Scene
             Name = name;
             Mesh = mesh;
         }
+        #endregion
         
         #region Public API
         /// <summary>
@@ -74,6 +76,7 @@ namespace _3DDemoA2.Scene
         /// This part's transform relative to its parent: scale, then rotate around the pivot, then move into place.
         /// (Row-vector convention, so the matrices read left to right in the order they are applied.)
         /// </summary>
+        /// <returns>The local transformation matrix.</returns>
         public Matrix4 LocalMatrix => 
             Matrix4.CreateScale(Scale) * Matrix4.CreateFromQuaternion(Rotation) * Matrix4.CreateTranslation(Position);
         
@@ -114,6 +117,7 @@ namespace _3DDemoA2.Scene
         /// <summary>
         /// Used when neither this part nor any parent has a material: matte, no maps.
         /// </summary>
+        /// <returns>The default material.</returns>
         private static readonly Material DefaultMaterial = new();
 
         /// <summary>
@@ -122,6 +126,8 @@ namespace _3DDemoA2.Scene
         /// would tilt them so they are no longer perpendicular to the surface.
         /// The translation row is dropped because normals are directions, not points.
         /// </summary>
+        /// <param name="model">The model matrix to create a normal matrix from.</param>
+        /// <returns>The normal matrix.</returns>
         private static Matrix3 CreateNormalMatrix(Matrix4 model)
             => new Matrix3(Matrix4.Transpose(Matrix4.Invert(model)));
         #endregion

@@ -11,18 +11,22 @@ namespace _3DDemoA2.Graphics
     /// </summary>
     internal class ShaderProgram : IGraphicsResources
     {
+        #region Public Fields
         /// <summary>
         /// Gets the ID of the shader program.
         /// </summary>
         public int ID { get; }
+        #endregion
         
-        /// <summary>
-        /// A dictionary to cache uniform locations for efficient access.
-        /// </summary>
+        #region Private Fields
+        // A dictionary to cache uniform locations for efficient access.
         private readonly Dictionary<string, int> _uniformLocations = new();
+        #endregion
         
+        #region Constructors
         /// <summary>
         /// Constructor that initialises a new instance of the ShaderProgram class.
+        /// It loads, compiles, and links the vertex and fragment shaders from the specified file paths.
         /// </summary>
         /// <param name="vertexShaderFilepath">The file path to the vertex shader.</param>
         /// <param name="fragmentShaderFilePath">The file path to the fragment shader.</param>
@@ -72,10 +76,9 @@ namespace _3DDemoA2.Graphics
             GL.DeleteShader(vertexShader);
             GL.DeleteShader(fragmentShader);
         }
+        #endregion
         
         #region Public API
-        // Uniform setters apply to the currently bound program, so call Bind() before using them.
-
         /// <summary>
         /// Sets a 4x4 matrix uniform variable in the shader program.
         /// Uploaded transposed (row-vector convention), matching the vec4 * matrix order used in the shaders.
@@ -132,9 +135,8 @@ namespace _3DDemoA2.Graphics
         
         #region Helper Methods
         /// <summary>
-        /// Returns a uniform's location, looking it up only the first time and caching it after that.
-        /// A location of -1 means the uniform doesn't exist, or the GLSL compiler removed it because it is unused.
-        /// OpenGL silently ignores writes to -1, so it is logged once here to make typos easy to spot.
+        /// Retrieves the location of a uniform variable in the shader program.
+        /// If the location has been previously queried, it is cached for faster access.
         /// </summary>
         /// <param name="name">The name of the uniform variable in the shader.</param>
         /// <returns>The uniform's location, or -1 if not found.</returns>
@@ -155,7 +157,7 @@ namespace _3DDemoA2.Graphics
         /// <summary>
         /// Loads the shader source code from a file in the Shaders folder.
         /// </summary>
-        /// <param name="fileName">The shader file, relative to the Shaders folder.</param>
+        /// <param name="fileName">The shader file</param>
         /// <returns>The shader source code, or an empty string if the file could not be read.</returns>
         private static string LoadShaderSource(string fileName)
         {
@@ -175,8 +177,7 @@ namespace _3DDemoA2.Graphics
         }
 
         /// <summary>
-        /// Builds one #define per DebugView value, e.g. "#define DEBUGVIEW_WIREFRAME 3",
-        /// so the shaders use the same values as the C# enum without repeating them.
+        /// Builds a string containing #define lines for each DebugView enum value.
         /// </summary>
         /// <returns>The #define lines, one per value.</returns>
         private static string BuildDefines()
@@ -188,8 +189,7 @@ namespace _3DDemoA2.Graphics
         }
 
         /// <summary>
-        /// Inserts the #defines straight after the #version line, which GLSL requires to be first.
-        /// Note: this shifts the line numbers in shader compile errors down by the number of defines.
+        /// Inserts the #defines straight after the #version line in the shader source.
         /// </summary>
         /// <param name="source">The shader source, starting with its #version line.</param>
         /// <returns>The source with the defines added.</returns>

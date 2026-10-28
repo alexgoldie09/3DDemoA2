@@ -47,6 +47,7 @@ namespace _3DDemoA2
         private bool _firstMove = true;
         #endregion
 
+        #region Constructors
         /// <summary>
         /// Constructor that initialises a new instance of the Camera class with the specified width, height, and position.
         /// </summary>
@@ -59,6 +60,7 @@ namespace _3DDemoA2
             _screenHeight = height;
             _position = position;
         }
+        #endregion
         
         #region Public API
         /// <summary>

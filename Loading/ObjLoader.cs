@@ -2,36 +2,32 @@ using _3DDemoA2.Debugging;
 using _3DDemoA2.Graphics;
 using _3DDemoA2.Utilities;
 using OpenTK.Mathematics;
+using Corner = (int Position, int UV, int Normal);
 
 namespace _3DDemoA2.Loading
 {
     /// <summary>
-    /// Loads a wavefront .obj file from the Models folder into MeshData.
+    /// Loads a Wavefront .obj file into a MeshData object.
     ///
-    /// How it works:
-    ///  1. Read the file line by line, skipping blank lines and # comments.
-    ///  2. Collect the raw attribute lists: "v" (positions), "vt" (UVs) and "vn" (normals).
-    ///  3. Each "f" (face) line lists corners as "v/vt/vn" index triplets. OBJ indices are 1-based,
-    ///     and each attribute has its own index, which OpenGL can't use: it needs ONE index per vertex.
-    ///  4. So every unique (v, vt, vn) combination becomes one output vertex. A dictionary remembers
-    ///     combinations already seen, so shared corners reuse the same vertex (indexed drawing).
-    ///  5. Faces with more than 3 corners are split into a triangle fan as a fallback.
-    ///
-    /// Supported: v, vt, vn, f (v, v/vt, v//vn, v/vt/vn, and negative/relative indices), and o (named objects,
-    /// used by LoadParts to keep each part of a multi-part model separate).
-    /// Ignored: g, s, mtllib, usemtl and anything else (materials are bound in code instead).
-    /// Winding is kept as exported (Blender exports counter-clockwise), matching GL.FrontFace(Ccw) in Game.
+    /// The .obj format is simple and widely supported, but it has some quirks:
+    /// - It can contain multiple named objects, which can be loaded as separate MeshData objects
+    ///   or merged into one.
+    ///   This loader supports both modes.
+    /// - It can contain faces with more than three corners (quads or polygons).
+    ///   This loader triangulates them using a fan method, but it logs a warning because the winding order may not be preserved.
+    /// - It can contain corners with missing UVs or normals.
+    ///   This loader fills in default values and logs a warning.
     /// </summary>
     internal static class ObjLoader
     {
-        /// <summary>
-        /// Maximum number of malformed-line warnings shown on screen per file, so a broken file can't flood the log.
-        /// </summary>
+        #region Constants
+        // Maximum number of malformed-line warnings shown on screen per file, so a broken file can't flood the log.
         private const int MaxWarnings = 5;
+        #endregion
 
+        #region Public API
         /// <summary>
         /// Loads an .obj file from the Models folder as one mesh.
-        /// Problems are logged, and a missing file returns empty data.
         /// </summary>
         /// <param name="fileName">The .obj file.</param>
         /// <returns>The mesh data, ready to be passed to a Mesh.</returns>
@@ -39,12 +35,13 @@ namespace _3DDemoA2.Loading
 
         /// <summary>
         /// Loads an .obj file from the Models folder as separate parts, one per named object in the file.
-        /// This is useful for multi-part models like vehicles, so that each part can be given its own transform.
         /// </summary>
         /// <param name="fileName">The .obj file.</param>
         /// <returns>Each part's mesh data, keyed by its object name.</returns>
         public static Dictionary<string, MeshData> LoadParts(string fileName) => Parse(fileName, splitByObject: true);
+        #endregion
 
+        #region Helper Methods
         /// <summary>
         /// Reads the file and builds the mesh data.
         /// </summary>
@@ -79,8 +76,8 @@ namespace _3DDemoA2.Loading
             var normals = new List<Vector3>();
 
             // (v, vt, vn) combination. Used to de-duplicate vertices and build the index buffer.
-            var vertexLookup = new Dictionary<(int Position, int UV, int Normal), uint>();
-            var corners = new List<(int Position, int UV, int Normal)>(4);
+            var vertexLookup = new Dictionary<Corner, uint>();
+            var corners = new List<Corner>(4);
 
             // Stats for the summary and warnings
             int triangleCount = 0;
@@ -103,26 +100,30 @@ namespace _3DDemoA2.Loading
                     switch (parts[0])
                     {
                         case "v":
+                            // Parse "v x y z" into a Vector3 and add it to the raw positions list.
                             positions.Add(ParseVector3(parts));
                             break;
 
                         case "vt":
+                            // Parse "vt u v" into a Vector2 and add it to the raw UVs list.
+                            // OBJ UVs are 0..1, but some exporters use 0..1 for the bottom-left corner and some use 0..1 for the top-left corner.
+                            // This loader does not flip the V coordinate, so the model's UVs must match the texture's orientation.
                             uvs.Add(new Vector2(ParseFloat(parts[1]), ParseFloat(parts[2])));
                             break;
 
                         case "vn":
+                            // Parse "vn x y z" into a Vector3 and add it to the raw normals list.
                             normals.Add(ParseVector3(parts));
                             break;
 
                         case "o":
-                            // A new named object. When splitting, its faces go into their own MeshData,
-                            // with its own de-duplication so its indices start from 0.
-                            // The raw v/vt/vn lists are NOT reset: OBJ indices count from the top of the whole file.
+                            // Start a new mesh for this named object, if splitting is enabled.
+                            // Otherwise ignore the name and keep adding to the current mesh.
                             if (splitByObject)
                             {
                                 current = new MeshData();
                                 meshes[line.Substring(1).Trim()] = current;
-                                vertexLookup = new Dictionary<(int Position, int UV, int Normal), uint>();
+                                vertexLookup = new Dictionary<Corner, uint>();
                             }
                             break;
 
@@ -137,13 +138,22 @@ namespace _3DDemoA2.Loading
                                 throw new FormatException($"face has only {corners.Count} corners");
                             if (corners.Count > 3)
                                 polygonCount++;
-                            
+
+                            // Note any corners without UVs or normals, for the warnings at the end (AddCorner fills in defaults)
+                            foreach (var corner in corners)
+                            {
+                                if (corner.UV < 0)
+                                    missingUVs = true;
+                                if (corner.Normal < 0)
+                                    missingNormals = true;
+                            }
+
                             // Keeps the original corner order, so the winding direction is preserved.
                             for (int i = 1; i + 1 < corners.Count; i++)
                             {
-                                AddCorner(corners[0]);
-                                AddCorner(corners[i]);
-                                AddCorner(corners[i + 1]);
+                                AddCorner(corners[0], current, vertexLookup, positions, uvs, normals);
+                                AddCorner(corners[i], current, vertexLookup, positions, uvs, normals);
+                                AddCorner(corners[i + 1], current, vertexLookup, positions, uvs, normals);
                                 triangleCount++;
                             }
                             break;
@@ -183,45 +193,57 @@ namespace _3DDemoA2.Loading
                 DebugText.Log($"{fileName}: some corners have no normals (export with Normals)", Color4.Orange, 8f);
 
             return meshes;
-
-            // Adds one triangle corner to the output, reusing the existing vertex if this exact
-            // (position, UV, normal) combination has been seen before.
-            void AddCorner((int Position, int UV, int Normal) corner)
-            {
-                if (!vertexLookup.TryGetValue(corner, out uint index))
-                {
-                    index = (uint)current.VertexCount;
-                    vertexLookup[corner] = index;
-
-                    current.Positions.Add(positions[corner.Position]);
-
-                    if (corner.UV >= 0)
-                        current.UVs.Add(uvs[corner.UV]);
-                    else
-                    {
-                        current.UVs.Add(Vector2.Zero);
-                        missingUVs = true;
-                    }
-
-                    if (corner.Normal >= 0)
-                        current.Normals.Add(normals[corner.Normal]);
-                    else
-                    {
-                        current.Normals.Add(Vector3.UnitY);
-                        missingNormals = true;
-                    }
-                }
-
-                current.Indices.Add(index);
-            }
         }
+        
+        /// <summary>
+        /// Adds one triangle corner to a mesh, reusing the existing vertex if this exact
+        /// (position, UV, normal) combination has been seen before in that mesh.
+        /// A missing UV or normal (index -1) is filled with a default.
+        /// </summary>
+        /// <param name="corner">The corner's 0-based indices into the raw lists (-1 = missing).</param>
+        /// <param name="mesh">The mesh being built.</param>
+        /// <param name="vertexLookup">The mesh's vertices so far, keyed by their index combination.</param>
+        /// <param name="positions">Raw positions read from the file.</param>
+        /// <param name="uvs">Raw UVs read from the file.</param>
+        /// <param name="normals">Raw normals read from the file.</param>
+        private static void AddCorner(Corner corner, 
+            MeshData mesh,
+            Dictionary<Corner, uint> vertexLookup,
+            List<Vector3> positions, 
+            List<Vector2> uvs, 
+            List<Vector3> normals)
+        {
+            if (!vertexLookup.TryGetValue(corner, out uint index))
+            {
+                index = (uint)mesh.VertexCount;
+                vertexLookup[corner] = index;
 
-        #region Helper Methods
+                mesh.Positions.Add(positions[corner.Position]);
+
+                if (corner.UV >= 0)
+                    mesh.UVs.Add(uvs[corner.UV]);
+                else
+                    mesh.UVs.Add(Vector2.Zero);
+
+                if (corner.Normal >= 0)
+                    mesh.Normals.Add(normals[corner.Normal]);
+                else
+                    mesh.Normals.Add(Vector3.UnitY);
+            }
+
+            mesh.Indices.Add(index);
+        }
+        
         /// <summary>
         /// Parses one face corner ("v", "v/vt", "v//vn" or "v/vt/vn") into 0-based indices.
         /// Indices are resolved against the lists read so far, which is what the OBJ format specifies.
         /// </summary>
-        private static (int Position, int UV, int Normal) ParseFaceVertex(
+        /// <param name="token">The face corner token to parse.</param>
+        /// <param name="positionCount">The number of positions read so far.</param>
+        /// <param name="uvCount">The number of UVs read so far.</param>
+        /// <param name="normalCount">The number of normals read so far.</param>
+        /// <returns>A Corner struct with 0-based indices.</returns>
+        private static Corner ParseFaceVertex(
             string token, int positionCount, int uvCount, int normalCount)
         {
             string[] fields = token.Split('/');
@@ -237,6 +259,10 @@ namespace _3DDemoA2.Loading
         /// Converts an OBJ index to a 0-based list index. Positive indices are 1-based (1 = first);
         /// negative indices count back from the end of the list so far (-1 = most recent). 0 is invalid.
         /// </summary>
+        /// <param name="text">The OBJ index as a string.</param>
+        /// <param name="count">The number of elements in the list so far.</param>
+        /// <param name="kind">A description of the kind of index (e.g., "position", "UV", "normal").</param>
+        /// <returns>The 0-based list index.</returns>
         private static int ResolveIndex(string text, int count, string kind)
         {
             int objIndex = int.Parse(text);
@@ -251,14 +277,16 @@ namespace _3DDemoA2.Loading
         /// <summary>
         /// Parses "keyword x y z" into a Vector3.
         /// </summary>
+        /// <param name="parts">The parts of the line split by spaces.</param>
+        /// <returns>The parsed Vector3.</returns>
         private static Vector3 ParseVector3(string[] parts)
             => new(ParseFloat(parts[1]), ParseFloat(parts[2]), ParseFloat(parts[3]));
 
         /// <summary>
         /// Parses a float from a string.
         /// </summary>
-        /// <param name="text"></param>
-        /// <returns></returns>
+        /// <param name="text">The string to parse.</param>
+        /// <returns>The parsed float.</returns>
         private static float ParseFloat(string text)
             => float.Parse(text);        
         #endregion

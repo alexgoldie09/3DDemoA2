@@ -8,11 +8,14 @@ namespace _3DDemoA2.Graphics
     /// </summary>
     internal class VAO : IGraphicsResources
     {
+        #region Public Fields
         /// <summary>
         /// Gets the ID of the Vertex Array Object (VAO).
         /// </summary>
         public int ID { get; }
+        #endregion
 
+        #region Constructors
         /// <summary>
         /// Initializes a new instance of the VAO class and generates a Vertex Array Object (VAO) in OpenGL.
         /// </summary>
@@ -22,6 +25,7 @@ namespace _3DDemoA2.Graphics
             ID = GL.GenVertexArray();
             GL.BindVertexArray(ID);
         }
+        #endregion
 
         #region Public API
         /// <summary>

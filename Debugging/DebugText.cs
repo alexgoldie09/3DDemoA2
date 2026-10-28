@@ -59,7 +59,7 @@ namespace _3DDemoA2.Debugging
         private static float[] _vertexData = new float[1024]; // reused every frame, grows if needed
         private static int _floatCount;
 
-        // Window size in screen coordinates (not framebuffer pixels), so text is the same size on Retina
+        // Window size in screen coordinates (not framebuffer pixels)
         private static float _screenWidth = 1280f;
         private static float _screenHeight = 720f;
         #endregion
@@ -74,7 +74,6 @@ namespace _3DDemoA2.Debugging
             _font = new Texture("BitPapAtlas.png", pixelPerfect: true); // nearest filtering keeps the pixel font crisp
 
             // One interleaved, dynamic buffer: the text changes every frame, so it's rebuilt every frame.
-            // (Raw GL here because the VAO/VBO wrappers are built for separate, static buffers.)
             _vao = GL.GenVertexArray();
             _vbo = GL.GenBuffer();
             GL.BindVertexArray(_vao);
@@ -222,7 +221,8 @@ namespace _3DDemoA2.Debugging
         }
 
         /// <summary>
-        /// Turns every message into quads (two triangles per character) in _vertexData.
+        /// Turns every message into quads (two triangles per character), ready to upload to the GPU.
+        /// Each vertex has position, uv and colour.
         /// </summary>
         private static void BuildVertices()
         {

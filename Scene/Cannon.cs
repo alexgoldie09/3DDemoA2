@@ -6,10 +6,9 @@ using OpenTK.Mathematics;
 namespace _3DDemoA2.Scene
 {
     /// <summary>
-    /// The animated cannon, built from the three parts in Cannon.obj: the Mount, Wheels and Barrel.
+    /// The cannon is a 3D model, built from the three parts in Cannon.obj: the Mount, Wheels and Barrel.
     ///
-    /// Every part was modelled around the same pivot, the centre of the axle, so the Wheels and Barrel
-    /// sit at zero offset from the Mount and only the Mount is lifted above the root.
+    /// Provides API for controlling the cannon's position, heading and barrel elevation, and for rendering it.
     /// </summary>
     internal class Cannon : IRenderable
     {
@@ -73,16 +72,15 @@ namespace _3DDemoA2.Scene
         private float _wheelAngle;
         #endregion
 
+        #region Constructors
         /// <summary>
         /// Constructor that loads the cannon's parts, re-centres each on the axle and builds the hierarchy.
-        /// The parameters follow the same order as StaticProp's; any texture file left as null uses the
-        /// material's neutral default (no map). The normal, metallic and roughness maps are for the metal parts.
         /// </summary>
         /// <param name="name">Name used for the root part and in log messages.</param>
-        /// <param name="objFile">The .obj file, which must contain parts named Mount, Wheels and Barrel.</param>
+        /// <param name="objFile">The .obj file which contains the cannons parts.</param>
         /// <param name="position">Starting position on the ground.</param>
         /// <param name="colorMapFile">The colour (albedo) atlas, shared by every part, or null for plain white.</param>
-        /// <param name="normalMapFile">The metal's normal map (OpenGL convention), or null for the mesh normals.</param>
+        /// <param name="normalMapFile">The metal's normal map, or null for the mesh normals.</param>
         /// <param name="metallicMapFile">The metal's metallic map, or null for fully metal everywhere.</param>
         /// <param name="roughnessMapFile">The metal's roughness map, or null for an even, fairly polished finish.</param>
         /// <param name="maxDistanceFromCentre">How far from the island's centre the cannon may roll.</param>
@@ -92,28 +90,26 @@ namespace _3DDemoA2.Scene
         {
             _maxDistanceFromCentre = maxDistanceFromCentre;
 
+            // Load the three parts from the OBJ file, which are all modelled around the same pivot (the axle centre).
             var parts = ObjLoader.LoadParts(objFile);
 
+            // Build the hierarchy: the root is at the axle pivot, the mount is offset above it, and the barrel and wheels are children of the mount.
             _root = new ModelPart(name) { Position = position };
             ModelPart mount = _root.AddChild(CreatePart(parts, "Mount"));
             mount.Position = AxlePivot;
-            // Children draw in the order they are added: the Barrel goes straight after the Mount because they share
-            // the metal material (so it is applied once for both), then the Wheels with their own rubber material
             _barrel = mount.AddChild(CreatePart(parts, "Barrel"));
             _wheels = mount.AddChild(CreatePart(parts, "Wheels"));
 
             // --- Materials ---
-            // Scratched metal for the whole cannon, set on the root so every part inherits it.
-            // The maps decide metal vs dirt and smooth vs scratched per pixel.
-            // The colour atlas is shared by both materials below, which works because both use it as the albedo map (unit 0)
+            // The cannon's metal parts share a single material, which is applied to the Mount and Barrel.
             Texture? colorMap = LoadTexture(colorMapFile, Material.ALBEDOMAPUNIT);
             Texture? roughnessMap = LoadTexture(roughnessMapFile, Material.ROUGHNESSMAPUNIT);
 
-            // With a roughness map, a value of 1 lets the map decide; without one, an even polished finish
+            // If no roughness map is given, use a fairly polished metal instead of the default matte (1.0) roughness.
             float roughness = METALROUGHNESS;
             if (roughnessMap != null)
                 roughness = 1f;
-
+            
             _root.Material = new Material
             {
                 AlbedoMap = colorMap,
@@ -125,10 +121,10 @@ namespace _3DDemoA2.Scene
                 DetailScale = METALDETAILSCALE
             };
 
-            // Rubber wheels override it: same colour atlas but no detail maps, not metallic,
-            // mostly rough (a faint, broad sheen)
+            // The wheels are rubber, so they have a different material with no metallic map and a high roughness.
             _wheels.Material = new Material { AlbedoMap = colorMap, Metallic = 0f, Roughness = 0.9f };
         }
+        #endregion
         
         #region Public API
         /// <summary>
@@ -221,7 +217,7 @@ namespace _3DDemoA2.Scene
         /// <summary>
         /// Loads a texture and keeps it for deleting later, or returns null when no file is given.
         /// </summary>
-        /// <param name="file">The texture file in the Textures folder, or null.</param>
+        /// <param name="file">The texture file from a folder, or null.</param>
         /// <param name="unit">The texture unit for the map slot it fills (e.g. Material.NORMALMAPUNIT).</param>
         /// <returns>The loaded texture, or null.</returns>
         private Texture? LoadTexture(string? file, int unit)

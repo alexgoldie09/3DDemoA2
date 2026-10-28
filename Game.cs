@@ -10,10 +10,11 @@ using _3DDemoA2.Debugging;
 namespace _3DDemoA2
 {
     /// <summary>
-    /// Represents the main game class that handles rendering, input, and game logic.
+    /// Represents the main game window and handles rendering, input, and game logic.
     /// </summary>
     internal class Game : GameWindow
     {
+        #region Private Fields
         // width and height of screen
         private int _width;
         private int _height;
@@ -31,27 +32,29 @@ namespace _3DDemoA2
         // The animated cannon (also in _scene) but kept separately so keyboard input can drive it
         private Cannon? _cannon;
 
-        // The sky: drawn after the scene with its own shader, so it is kept outside _scene (see Skybox.cs)
+        // The sky: drawn after the scene with its own shader (it is kept outside _scene)
         private Skybox? _skybox;
 
         // How far the cannon may roll from the island's centre: the island's flat edges are 8.56 m out,
         // minus about 1.6 m so the cannon's furthest point (barrel tip / wheel) stays on the grass
         private const float CANNONROLLLIMIT = 6.9f;
 
-        // Debug view: what the model shader outputs to the screen (see DebugView.cs, shared with Model.frag)
+        // Debug view: what the model shader outputs to the screen (albedo, normals, UVs, wireframe)
         private static readonly int DebugViewCount = Enum.GetValues<DebugView>().Length;
         private DebugView _debugView;
         
         // Lighting toggle: off shows the raw texture colour, for comparing lit vs unlit
         private bool _useLighting;
 
-        // Frame timing readout (frame time and CPU render time, see FrameTimer.cs)
+        // Frame timing readout (frame time and CPU render time)
         private readonly FrameTimer _frameTimer = new();
 
         // Camera vars
         private Camera? _camera;
         private readonly Vector3 _initialCameraPosition = new (0f, 2f, 25f); // in front of the island, just above the grass
-
+        #endregion
+        
+        #region Constructors
         /// <summary>
         /// Constructor that initialises a new instance of the Game class with the specified width, height, and title.
         /// </summary>
@@ -75,9 +78,9 @@ namespace _3DDemoA2
             // Center the window
             CenterWindow(new Vector2i(_width, _height));
         }
-
+        #endregion
+        
         #region OpenGL Overrides
-
         /// <summary>
         /// Called once when the window is created.
         /// </summary>
@@ -287,7 +290,7 @@ namespace _3DDemoA2
 
             base.OnUpdateFrame(args);
 
-            // Seconds since the last update, measured by OpenTK's GameWindow (keeps movement frame-rate independent)
+            // Seconds since the last update, which keeps movement frame-rate independent
             float deltaTime = (float)args.Time;
 
             // Update the debug text system with the elapsed time for this frame

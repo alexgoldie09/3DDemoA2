@@ -3,9 +3,8 @@ using System.Diagnostics;
 namespace _3DDemoA2.Debugging
 {
     /// <summary>
-    /// Measures frame timings for the on-screen readout, averaged over half a second so the numbers are readable
-    /// (a single frame's numbers jump around too much to read).
-    ///
+    /// Tracks the average frame time and CPU render time over a short sample of frames.
+    /// 
     /// Frame time is the whole gap between frames, including the VSync wait, so it follows the monitor's refresh rate.
     /// CPU render time is only how long this program spends issuing a frame's work, which is the part code changes affect.
     /// </summary>
@@ -18,7 +17,7 @@ namespace _3DDemoA2.Debugging
 
         #region Public Fields
         /// <summary>
-        /// Average time between frames over the last sample, in milliseconds (includes the VSync wait).
+        /// Average time between frames over the last sample, in milliseconds.
         /// </summary>
         public double AverageFrameMs { get; private set; }
 
@@ -52,9 +51,9 @@ namespace _3DDemoA2.Debugging
 
         /// <summary>
         /// Stops timing the frame's work and adds this frame to the averages.
-        /// Call before SwapBuffers, which is where VSync waits, so the wait isn't counted as render time.
+        /// Call before SwapBuffers so the wait isn't counted as render time.
         /// </summary>
-        /// <param name="frameSeconds">Time since the previous frame, in seconds (FrameEventArgs.Time).</param>
+        /// <param name="frameSeconds">Time since the previous frame, in seconds.</param>
         public void EndFrame(double frameSeconds)
         {
             _renderStopwatch.Stop();

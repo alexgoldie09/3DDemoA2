@@ -7,11 +7,14 @@ namespace _3DDemoA2.Graphics
     /// </summary>
     internal class IBO : IGraphicsResources
     {
+        #region Public Fields
         /// <summary>
         /// Gets the ID of the Index Buffer Object (IBO).
         /// </summary>
         public int ID { get; }
+        #endregion
 
+        #region Constructors
         /// <summary>
         /// Constructor that intialises a new instance of the IBO class with the specified index data.
         /// </summary>
@@ -24,6 +27,7 @@ namespace _3DDemoA2.Graphics
             GL.BufferData(BufferTarget.ElementArrayBuffer, indices.Count * sizeof(uint), indices.ToArray(),
                 BufferUsageHint.StaticDraw);
         }
+        #endregion
 
         #region IGraphicsResources Functions
         /// <summary>

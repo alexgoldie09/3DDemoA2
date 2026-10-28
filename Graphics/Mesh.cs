@@ -4,14 +4,13 @@ using OpenTK.Mathematics;
 
 namespace _3DDemoA2.Graphics
 {
+   /// <summary>
+   /// Represents a 3D mesh, which is a collection of vertices, normals, UVs, tangents, bitangents and indices that can be drawn with OpenGL.
+   /// </summary>
    internal class Mesh
    {
       #region Attribute Location
-
-      /// <summary>
-      /// The attribute locations for the vertex shader inputs.
-      /// Must match the layout qualifiers in the shader code for Model.vert.
-      /// </summary>
+      // Define the attribute locations for the vertex shader inputs.
       public const int POSITIONLOCATION = 0;
       public const int UVLOCATION = 1;
       public const int NORMALLOCATION = 2;
@@ -20,25 +19,19 @@ namespace _3DDemoA2.Graphics
       #endregion
 
       #region Public Fields
-
       /// <summary>
       /// The name of the mesh, used for debugging and logging purposes.
       /// </summary>
       public string Name { get; private set; }
 
       /// <summary>
-      /// The number of indices drawn per call (three per triangle).
-      /// 0 if the mesh is empty.
+      /// The number of indices drawn per call (three per triangle). 0 if the mesh is empty.
       /// </summary>
       public int IndexCount { get; private set; }
-
       #endregion
 
       #region Private Fields
-
-      /// <summary>
-      /// The various OpenGL objects used to store the mesh data on the GPU.
-      /// </summary>
+      // The various OpenGL objects used to store the mesh data on the GPU.
       private readonly VAO? _vao;
       private readonly VBO? _positionVbo;
       private readonly VBO? _uvVbo;
@@ -46,8 +39,9 @@ namespace _3DDemoA2.Graphics
       private readonly VBO? _tangentVbo;
       private readonly VBO? _bitangentVbo;
       private readonly IBO? _ibo;
-
       #endregion
+      
+      #region Constructors
       /// <summary>
       /// Constructor that validates the mesh data and uploads it to the GPU.
       /// Invalid data is logged and not uploaded, and the mesh then draws nothing instead of crashing.
@@ -95,6 +89,7 @@ namespace _3DDemoA2.Graphics
             Color4.LightGreen, 6f);
          DebugText.CheckGLError($"{name} upload");
       }
+      #endregion
 
       #region Public API
       /// <summary>
