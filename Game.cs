@@ -147,9 +147,9 @@ namespace _3DDemoA2
 
             _scene.Add(new StaticProp("Alien", "TestAlien.obj", new Vector3(4f, 0f, 0f),
                 colorMapFile: "AlienColorTexture.png",
-                normalMapFile: null,
-                metallicMapFile: null,
-                roughnessMapFile: null));
+                normalMapFile: "AlienNormalTexture.png",
+                metallicMapFile: "AlienMetallicTexture.png",
+                roughnessMapFile: "AlienRoughnessTexture.png"));
 
             // The cannon is kept in its own field as well (for the keyboard controls), so it is created first
             // and then added, rather than looked up by its position in the list
