@@ -11,10 +11,24 @@ The code and assets used in this project are either created by myself or sourced
 
 *The assessment builds on previous code from A1 and code provided in lectures.*
 
-*The models in the project were built by myself in the exception of the Alien which was provided to me by a university friend strictly for testing complex meshes. Metal and skybox textures came from AmbientCG; Freestylized (2018; 2026).*
+*The island and cannon models were built by myself. The alien model and its textures were provided by a university friend, Andre Lamb, strictly for testing complex meshes. e metal textures came from AmbientCG (2018), the skybox textures from Freestylized (2026), and the debug text font from Cile (n.d.).*
 
 ### TO RUN THE APPLICATION
 Run bin/Debug/net10.0/3DDemoA2.exe from within the extracted project folder (requires .NET 10).
+
+## Controls
+| Key | Action |
+|---|---|
+| W / A / S / D | Move the camera forward / left / back / right |
+| Q / E | Move the camera up / down |
+| Mouse | Look around |
+| Up / Down arrows | Roll the cannon forward / back (the wheels spin to match) |
+| Left / Right arrows | Turn the cannon |
+| Shift + Up / Down | Raise / lower the barrel |
+| V | Cycle the debug view (Texture, Normals, UVs, Wireframe, Metallic, Roughness) |
+| Tab | Toggle lighting |
+| C | Toggle backface culling |
+| Esc | Quit |
 
 ## AI Usage
 I have used ChatGPT to assist in the development of this project. The AI was used to provide guidance on how to code the objloader and lighting as the current resource material needed further simplification (OpenAI, 2026). Both these principles were taken from sources used and the AI helped understand how to implement them in my project (de Vries, 2019, 2020a; Groff, 2010; Jansson, 2026; opengl-tutorial, 2022, 2026; Sas, 2025). 
@@ -22,12 +36,21 @@ I have used ChatGPT to assist in the development of this project. The AI was use
 All code written and implemented in this project is my own work.
 
 ## Project Overview
-This project is a 3D OpenGL application that demonstrates the use of various graphics programming techniques. The application features a 3D environment with interactive elements, including a first-person camera, textured models that can be viewed in multiple passes, and lighting effects. The project aims to showcase the understanding and application of OpenGL concepts learned throughout the course.
+The scene is a small floating island with two models on it: a cannon that can be driven around, and an alien used to test a complex mesh. A skybox surrounds the scene, and the metal on the cannon reflects it. Every model is loaded from an .obj file, drawn and rendered efficiently using buffers and my own shaders, and lit by a single sun with normal, metallic and roughness maps.
+
+### Where each task is covered
+| Brief | How it is covered | Main classes |
+|---|---|---|
+| Task 1: textured model with a transform hierarchy | The cannon is one .obj file with three parts (Mount, Barrel and Wheels), loaded as separate meshes and joined in a parent / child hierarchy | ObjLoader, MeshData, Mesh, ModelPart, Cannon, Material |
+| Task 2: keyboard-controlled parts | The barrel elevates between -20° and 20°, the cannon turns, and it rolls (with the wheels spinning to match) but stops before the island's edge. Esc closes the program | Cannon, Game |
+| Task 3: first-person camera | WASD and mouse-look, with Q / E for up and down. Movement uses the frame time, so its speed doesn't depend on the frame rate, and the pitch is clamped to ±89° so the view can't flip (Coding with Sphere, 2023) | Camera |
+| Task 4: skybox | A cube map in its own class, drawn on an inward-facing cube with its own shaders | CubeMap, Skybox, Skybox.vert, Skybox.frag |
 
 ## Resources
 * AmbientCG. (2018). Metal 001 [Graphic]. https://ambientcg.com/view?id=Metal001
 * Barry Evans. (2019, November 12). Basic Shading Concepts: Lambert and Phong Models [Video]. YouTube. https://www.youtube.com/watch?v=z0-MsGvKOhg
 * Basler, R. (2013). Three normal mapping techniques explained for the mathematically uninclined. Gamedeveloper.Com. https://www.gamedeveloper.com/programming/three-normal-mapping-techniques-explained-for-the-mathematically-uninclined
+* Cile. (n.d.). Bitpap font [Graphic]. In dafont.com. Retrieved https://www.dafont.com/search.php?q=bit
 * Coding with Sphere. (2023, May 22). First person camera | how to code minecraft without a game engine (OpenTK/OpenGL C#) [Video]. YouTube. https://www.youtube.com/watch?v=S6KdFTaX8Ww
 * de Vries, J. (2018). LearnOpenGL - model. Learnopengl.Com. https://learnopengl.com/Model-Loading/Model
 * de Vries, J. (2019). LearnOpenGL - basic lighting. Learnopengl.Com. https://learnopengl.com/Lighting/Basic-Lighting
