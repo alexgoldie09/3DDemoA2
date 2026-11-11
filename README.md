@@ -11,7 +11,7 @@ The code and assets used in this project are either created by myself or sourced
 
 *The assessment builds on previous code from A1 and code provided in lectures.*
 
-*The island and cannon models were built by myself. The alien model and its textures were provided by a university friend, Andre Lamb, strictly for testing complex meshes. e metal textures came from AmbientCG (2018), the skybox textures from Freestylized (2026), and the debug text font from Cile (n.d.).*
+*The island and cannon models were built by myself. The alien model and its textures were provided by a university friend, Andre Lamb (student ID: A00121369), strictly for testing complex meshes. The metal textures came from AmbientCG (2018), the skybox textures from Freestylized (2026), and the debug text font from Cile (n.d.).*
 
 ### TO RUN THE APPLICATION
 Run bin/Debug/net10.0/3DDemoA2.exe from within the extracted project folder (requires .NET 10).
